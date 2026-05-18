@@ -613,6 +613,7 @@ async function fetchOpenTabs() {
       windowId: t.windowId,
       active:   t.active,
       favIconUrl: t.favIconUrl || '',
+      discarded: t.discarded || false,
       // Flag Tab Harbor's own pages so we can detect duplicate new tabs
       isTabOut: t.url === newtabUrl || t.url === 'chrome://newtab/',
     }));
@@ -1874,6 +1875,23 @@ async function closeTabOutDupes() {
   await fetchOpenTabs();
 }
 
+/**
+ * discardTab(tabId)
+ *
+ * Discards (unloads) a tab to free memory while keeping it in the tab bar.
+ * Chrome's discard API puts the tab to sleep; clicking it later will reload.
+ */
+async function discardTab(tabId) {
+  if (!tabId) return false;
+  try {
+    await chrome.tabs.discard(Number(tabId));
+    return true;
+  } catch (err) {
+    console.error('Failed to discard tab:', err);
+    return false;
+  }
+}
+
 
 /* ----------------------------------------------------------------
    IN-MEMORY STORE FOR OPEN-TAB GROUPS
@@ -1951,6 +1969,12 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
         <button class="chip-action chip-save" type="button" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" aria-label="${runtimeT ? runtimeT('saveForLater') : 'Save for later'}" title="${runtimeT ? runtimeT('saveForLater') : 'Save for later'}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
         </button>
+        <button class="chip-action chip-discard" type="button" data-action="discard-tab" data-tab-id="${tab.id}" aria-label="${runtimeT ? runtimeT('discardTab') : 'Sleep tab'}" title="${runtimeT ? runtimeT('discardTab') : 'Sleep tab'}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 0 1 8.646 3.646 9.003 9.003 0 0 0 12 21a9.003 9.003 0 0 0 8.354-5.646z" /></svg>
+        </button>
+        <button class="chip-action chip-discard" type="button" data-action="discard-tab" data-tab-id="${tab.id}" aria-label="${runtimeT ? runtimeT('discardTab') : 'Sleep tab'}" title="${runtimeT ? runtimeT('discardTab') : 'Sleep tab'}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 0 1 8.646 3.646 9.003 9.003 0 0 0 12 21a9.003 9.003 0 0 0 8.354-5.646z" /></svg>
+        </button>
         <button class="chip-action chip-close" type="button" data-action="close-single-tab" data-tab-url="${safeUrl}" aria-label="${runtimeT ? runtimeT('closeThisTab') : 'Close this tab'}" title="${runtimeT ? runtimeT('closeThisTab') : 'Close this tab'}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
         </button>
@@ -2016,7 +2040,7 @@ function renderDomainCard(group) {
     } catch {}
     const count    = urlCounts[tab.url];
     const dupeTag  = count > 1 ? ` <span class="chip-dupe-badge">(${count}x)</span>` : '';
-    const chipClass = count > 1 ? ' chip-has-dupes' : '';
+    const chipClass = `${count > 1 ? ' chip-has-dupes' : ''}${tab.discarded ? ' page-chip--discarded' : ''}`;
     const safeUrl   = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tab.url || '') : (tab.url || '').replace(/"/g, '&quot;');
     const safeTitle = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(label) : label.replace(/"/g, '&quot;');
     const safeLabel = runtimeEscapeHtml ? runtimeEscapeHtml(label) : label;
@@ -2039,6 +2063,9 @@ function renderDomainCard(group) {
         <button class="chip-action chip-save" data-action="defer-single-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="${runtimeT ? runtimeT('saveForLater') : 'Save for later'}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" /></svg>
         </button>
+        ${!tab.active ? `<button class="chip-action chip-discard" data-action="discard-tab" data-tab-id="${tab.id}" title="${runtimeT ? runtimeT('discardTab') : 'Sleep tab'}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 0 1 8.646 3.646 9.003 9.003 0 0 0 12 21a9.003 9.003 0 0 0 8.354-5.646z" /></svg>
+        </button>` : ''}
         <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" title="${runtimeT ? runtimeT('closeThisTab') : 'Close this tab'}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
         </button>
@@ -2856,6 +2883,23 @@ document.addEventListener('click', async (e) => {
     if (statTabs) statTabs.textContent = openTabs.length;
 
     showToast(runtimeT ? runtimeT('toastTabClosed') : 'Tab closed');
+    return;
+  }
+
+  // ---- Discard (sleep) a single tab ----
+  if (action === 'discard-tab') {
+    e.stopPropagation();
+    const tabId = actionEl.dataset.tabId;
+    if (!tabId) return;
+
+    window.__suppressAutoRefreshUntil = Date.now() + 2000;
+
+    await discardTab(Number(tabId));
+    await fetchOpenTabs();
+    await loadSessionGroups(openTabs.map(tab => tab.id));
+    await renderDashboard();
+
+    showToast(runtimeT ? runtimeT('toastTabDiscarded') : 'Tab sleeping');
     return;
   }
 

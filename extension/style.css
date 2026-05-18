@@ -1625,6 +1625,20 @@ body.group-dragging .group-nav-button {
   background: rgba(179, 90, 90, 0.08);
 }
 
+.chip-discard:hover {
+  color: var(--accent-lavender);
+  background: rgba(114, 107, 203, 0.08);
+}
+
+/* ---- Discarded (sleeping) tab state ---- */
+.page-chip--discarded {
+  opacity: 0.6;
+}
+
+.page-chip--discarded .chip-text {
+  text-decoration: line-through;
+}
+
 .page-chip.clickable {
   cursor: pointer;
   transition: background 0.15s ease;

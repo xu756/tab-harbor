@@ -816,6 +816,18 @@ test('chrome tab group mode stays active while the toggle is on', () => {
   );
 });
 
+test('discard tab renders sleep button on inactive tabs with visual styling and full re-render', () => {
+  assert.match(runtimeJs, /async function discardTab\(tabId\)\s*\{[\s\S]*chrome\.tabs\.discard\(/);
+  assert.match(runtimeJs, /data-action="discard-tab"/);
+  assert.match(runtimeJs, /page-chip--discarded/);
+  assert.match(runtimeJs, /if \(action === 'discard-tab'\)\s*\{[\s\S]*await fetchOpenTabs\(\);[\s\S]*await renderDashboard\(\);/);
+
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+  assert.match(css, /\.chip-discard:hover\s*\{[\s\S]*color:\s*var\(--accent-lavender\);/);
+  assert.match(css, /\.page-chip--discarded\s*\{[\s\S]*opacity:\s*0\.6;/);
+  assert.match(css, /\.page-chip--discarded\s\.chip-text\s*\{[\s\S]*text-decoration:\s*line-through;/);
+});
+
 test('theme menu keeps chrome tab groups above hitokoto and uses left-aligned toggles', () => {
   assert.match(
     runtimeJs,
