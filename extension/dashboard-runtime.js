@@ -2893,7 +2893,12 @@ document.addEventListener('click', async (e) => {
 
     window.__suppressAutoRefreshUntil = Date.now() + 2000;
 
-    await discardTab(Number(tabId));
+    const discarded = await discardTab(Number(tabId));
+    if (!discarded) {
+      showToast(runtimeT ? runtimeT('toastTabDiscardFailed') || 'Failed to sleep tab' : 'Failed to sleep tab');
+      return;
+    }
+
     await fetchOpenTabs();
     await loadSessionGroups(openTabs.map(tab => tab.id));
     await renderDashboard();
