@@ -1197,6 +1197,34 @@ async function appendTabsToExistingSavedSession(sessionId, tabIds = []) {
   };
 }
 
+async function submitTodoEditor() {
+  const editorState = getTodoEditorState ? getTodoEditorState() : {};
+  const title = String(editorState.title || '').trim();
+  const description = String(editorState.description || '').trim();
+
+  if (!title) {
+    setTodoEditorError(runtimeT ? runtimeT('todoTitleRequired') : 'Add a title before saving.');
+    await renderDeferredColumn();
+    focusTodoEditorTitle();
+    return;
+  }
+
+  if (editorState.mode === 'edit') {
+    if (!editorState.todoId) return;
+    await updateTodoItem(editorState.todoId, { title, description });
+    closeTodoEditor();
+    showToast(runtimeT ? runtimeT('toastTodoUpdated') : 'Todo updated');
+    await renderDeferredColumn();
+    return;
+  }
+
+  await createTodoItem({ title, description });
+  closeTodoEditor();
+  drawerView = 'todos';
+  todoDetailId = '';
+  await renderDeferredColumn();
+}
+
 async function getTabSessionPickerContext() {
   await refreshTabSessionModel();
   const currentWindowId = await getCurrentWindowId();
@@ -4109,6 +4137,12 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  if (e.key === 'Escape' && deferredPanelOpen && todoEditorState?.open) {
+    closeTodoEditor();
+    void renderDeferredColumn();
+    return;
+  }
+
   if (e.key === 'Escape' && deferredPanelOpen) {
     setDeferredPanelOpen(false);
   }
@@ -4198,12 +4232,43 @@ document.addEventListener('click', async (e) => {
   }
 
   if (action === 'create-todo') {
-    const title = window.prompt(runtimeT ? runtimeT('promptTodoTitle') : 'Todo title');
-    if (!title || !title.trim()) return;
-    const description = window.prompt(runtimeT ? runtimeT('promptTodoDetails') : 'Todo details (optional)') || '';
-    await createTodoItem({ title, description });
     drawerView = 'todos';
     todoDetailId = '';
+    openTodoEditor({ mode: 'create' });
+    await renderDeferredColumn();
+    focusTodoEditorTitle();
+    return;
+  }
+
+  if (action === 'edit-todo') {
+    const id = actionEl.dataset.todoId;
+    if (!id) return;
+    const todos = await getTodos();
+    const todo = todos.find(item => item.id === id && !item.dismissed);
+    if (!todo) return;
+    drawerView = 'todos';
+    openTodoEditor({
+      mode: 'edit',
+      todo,
+    });
+    await renderDeferredColumn();
+    focusTodoEditorTitle();
+    return;
+  }
+
+  if (action === 'update-todo-editor-field') {
+    setTodoEditorField(actionEl.dataset.field || '', actionEl.value || '');
+    return;
+  }
+
+  if (action === 'submit-todo-editor') {
+    e.preventDefault();
+    await submitTodoEditor();
+    return;
+  }
+
+  if (action === 'cancel-todo-editor') {
+    closeTodoEditor();
     await renderDeferredColumn();
     return;
   }
@@ -4225,6 +4290,17 @@ document.addEventListener('click', async (e) => {
     if (!id) return;
     await completeTodoItem(id);
     if (todoDetailId === id) todoDetailId = '';
+    await renderDeferredColumn();
+    return;
+  }
+
+  if (action === 'delete-todo') {
+    const id = actionEl.dataset.todoId;
+    if (!id) return;
+    await deleteTodoItem(id);
+    if (todoDetailId === id) todoDetailId = '';
+    if (todoEditorState?.todoId === id) closeTodoEditor();
+    showToast(runtimeT ? runtimeT('toastTodoDeleted') : 'Todo deleted');
     await renderDeferredColumn();
     return;
   }
@@ -4573,6 +4649,12 @@ document.addEventListener('focusout', (e) => {
 });
 
 document.addEventListener('input', async (e) => {
+  const todoEditorInput = e.target.closest('[data-action="update-todo-editor-field"]');
+  if (todoEditorInput) {
+    setTodoEditorField(todoEditorInput.dataset.field || '', todoEditorInput.value || '');
+    return;
+  }
+
   if (e.target.id !== 'todoSearchInput') return;
   todoSearchQuery = e.target.value.trim();
   await renderDeferredColumn();
@@ -4611,6 +4693,12 @@ document.addEventListener('submit', async (e) => {
   if (e.target.matches('.mission-rename-form')) {
     e.preventDefault();
     await submitGroupRenameEditor();
+    return;
+  }
+
+  if (e.target.matches('.todo-editor-form')) {
+    e.preventDefault();
+    await submitTodoEditor();
     return;
   }
 
