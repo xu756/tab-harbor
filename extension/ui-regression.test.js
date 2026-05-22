@@ -55,11 +55,14 @@ test('workspace top selector stays mounted when open tabs become empty', () => {
 test('saved tabs page keeps session management while home owns session save actions', () => {
   assert.match(html, /id="savedSessionsList"/);
   assert.doesNotMatch(html, /class="saved-tabs-page-title"/);
-  assert.doesNotMatch(html, /id="sessionPicker"/);
-  assert.doesNotMatch(html, /data-action="toggle-session-picker"/);
-  assert.doesNotMatch(html, /data-action="save-selected-session"/);
   assert.doesNotMatch(html, /Keep a window or a handpicked set of tabs, then bring it back when the desk is ready\./);
   assert.match(runtimeJs, /data-action="save-current-window-session"/);
+  assert.match(runtimeJs, /id="tabSessionPicker"/);
+  assert.match(runtimeJs, /data-action="select-session-picker-mode"[\s\S]*data-session-picker-mode="existing"/);
+  assert.match(runtimeJs, /data-action="change-session-picker-new-name"/);
+  assert.match(runtimeJs, /sessionPickerNewSessionNamePlaceholder/);
+  assert.match(runtimeJs, /data-action="change-session-picker-target"/);
+  assert.match(runtimeJs, /data-action="save-selected-session-tabs"/);
   assert.match(runtimeJs, /class="section-icon-action"/);
   assert.match(runtimeJs, /class="section-icon-action section-icon-action-close"/);
   assert.match(runtimeJs, /data-tooltip="\$\{runtimeT \? runtimeT\('saveSessionButton'\) : 'Save session'\}"/);
@@ -79,6 +82,20 @@ test('saved tabs page keeps session management while home owns session save acti
   assert.match(sessionManagerJs, /data-action="delete-tab-session"/);
   assert.match(sessionManagerJs, /data-action="delete-saved-session-tab"/);
   assert.doesNotMatch(sessionManagerJs, /saved-session-tab-url/);
+});
+
+test('saved-session picker scopes visible tabs to the selected entry point', () => {
+  assert.match(runtimeJs, /async function openTabSessionPicker\(\{\s*source = 'current-window',\s*initialTabIds = null,\s*scopeTabIds = null,\s*\} = \{\}\)/);
+  assert.match(runtimeJs, /const scopedGroups = getScopedTabSessionPickerGroups\(context\.groups, scopeTabIds\);/);
+  assert.match(runtimeJs, /const allIds = getTabSessionPickerAllIds\(scopedGroups\);/);
+  assert.match(runtimeJs, /groups: scopedGroups,/);
+  assert.match(runtimeJs, /const newSessionName = String\(tabSessionPickerState\.newSessionName \|\| ''\)\.trim\(\);/);
+  assert.match(runtimeJs, /saveSelectedTabSession\(\s*selectedIds,\s*tabSessionPickerState\.source \|\| 'selected',\s*newSessionName\s*\)/);
+  assert.match(runtimeJs, /if \(action === 'save-current-window-session'\) \{[\s\S]{0,280}openTabSessionPicker\(\{ source: 'current-window' \}\)/);
+  assert.match(runtimeJs, /if \(action === 'save-single-tab-session'\) \{[\s\S]{0,360}openTabSessionPicker\(\{\s*source: 'single-tab',\s*initialTabIds: \[tabId\],\s*scopeTabIds: \[tabId\],\s*\}\)/);
+  assert.match(runtimeJs, /if \(action === 'save-domain-session'\) \{[\s\S]{0,720}openTabSessionPicker\(\{\s*source: 'group',\s*initialTabIds: tabIds,\s*scopeTabIds: tabIds,\s*\}\)/);
+  assert.doesNotMatch(runtimeJs, /saveSelectedTabSession\(\[tabId\], 'single-tab'\)/);
+  assert.doesNotMatch(runtimeJs, /saveSelectedTabSession\(tabIds, 'group'\)/);
 });
 
 test('home and saved section headers share a fixed title column and top nav stays single-row', () => {
@@ -123,7 +140,7 @@ test('manual sleep control places per-tab moon action first', () => {
 test('icon-only actions use themed tooltips instead of native title hovers', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
-  assert.match(css, /\.chip-action::after,/);
+  assert.match(css, /\.chip-action\[data-tooltip\]::after,/);
   assert.match(css, /content: attr\(data-tooltip\);/);
   assert.doesNotMatch(runtimeJs, /save-current-window-session"[^>]* title="/);
   assert.doesNotMatch(runtimeJs, /save-domain-session"[^>]* title="/);

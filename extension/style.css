@@ -1866,9 +1866,9 @@ body.group-dragging .group-nav-button {
   color: var(--status-abandoned);
 }
 
-.chip-action::after,
-.group-action-icon::after,
-.section-icon-action::after {
+.chip-action[data-tooltip]::after,
+.group-action-icon[data-tooltip]::after,
+.section-icon-action[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
   left: 50%;
@@ -1891,12 +1891,12 @@ body.group-dragging .group-nav-button {
   z-index: 20;
 }
 
-.chip-action:hover::after,
-.chip-action:focus-visible::after,
-.group-action-icon:hover::after,
-.group-action-icon:focus-visible::after,
-.section-icon-action:hover::after,
-.section-icon-action:focus-visible::after {
+.chip-action[data-tooltip]:hover::after,
+.chip-action[data-tooltip]:focus-visible::after,
+.group-action-icon[data-tooltip]:hover::after,
+.group-action-icon[data-tooltip]:focus-visible::after,
+.section-icon-action[data-tooltip]:hover::after,
+.section-icon-action[data-tooltip]:focus-visible::after {
   opacity: 1;
   transform: translate(-50%, 0);
 }
@@ -2246,6 +2246,78 @@ body.group-dragging .group-nav-button {
   flex: 1;
   color: var(--muted);
   font-size: var(--ui-font-12);
+}
+
+.session-picker-save-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--warm-gray) 62%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--workspace-chip-bg) 38%, transparent);
+}
+
+.session-picker-mode-button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Public Sans', sans-serif;
+  font-size: var(--ui-font-12);
+  font-weight: 600;
+}
+
+.session-picker-mode-button:hover:not(:disabled),
+.session-picker-mode-button.is-active {
+  background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+  color: var(--ink);
+}
+
+.session-picker-mode-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.session-picker-name-input,
+.session-picker-target-select {
+  min-height: 32px;
+  width: min(220px, 28vw);
+  max-width: 220px;
+  border: 1px solid color-mix(in srgb, var(--warm-gray) 66%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+  color: var(--ink);
+  font-family: 'Public Sans', sans-serif;
+  font-size: var(--ui-font-12);
+  padding: 5px 28px 5px 9px;
+}
+
+.session-picker-name-input {
+  padding-right: 9px;
+}
+
+.session-picker-name-input::placeholder {
+  color: color-mix(in srgb, var(--muted) 82%, transparent);
+}
+
+.session-picker-name-input:focus {
+  border-color: var(--workspace-accent-border);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-accent-soft) 62%, transparent);
+}
+
+.session-picker-target-select:disabled {
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.session-picker .action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .saved-sessions-section {

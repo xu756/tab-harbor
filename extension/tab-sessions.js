@@ -420,6 +420,55 @@
     return saveSavedTabSessions(nextSessions);
   }
 
+  async function appendSavedTabSessionTabs(sessionId, tabsToAppend, {
+    skipDuplicateUrls = true,
+  } = {}) {
+    const targetId = normalizeString(sessionId);
+    const normalizedTabs = Array.isArray(tabsToAppend)
+      ? tabsToAppend.map(normalizeSessionTab).filter(Boolean)
+      : [];
+    if (!normalizedTabs.length) throw new Error('No restorable tabs selected');
+
+    const sessions = await getSavedTabSessions();
+    let updatedSession = null;
+    let appendedCount = 0;
+    let skippedDuplicateCount = 0;
+    const nextSessions = sessions.map(session => {
+      if (session.id !== targetId) return session;
+
+      const existingUrls = new Set((session.tabs || []).map(tab => tab.url).filter(Boolean));
+      const nextTabs = [...(session.tabs || [])];
+
+      for (const tab of normalizedTabs) {
+        if (skipDuplicateUrls && existingUrls.has(tab.url)) {
+          skippedDuplicateCount += 1;
+          continue;
+        }
+        nextTabs.push(tab);
+        existingUrls.add(tab.url);
+        appendedCount += 1;
+      }
+
+      updatedSession = {
+        ...session,
+        tabs: nextTabs,
+        groups: buildSessionGroupsFromTabs(nextTabs),
+      };
+      return updatedSession;
+    });
+
+    if (!updatedSession) throw new Error('Session not found');
+
+    const savedSessions = await saveSavedTabSessions(nextSessions);
+    const savedSession = savedSessions.find(session => session.id === targetId) || updatedSession;
+    return {
+      sessions: savedSessions,
+      session: savedSession,
+      appendedCount,
+      skippedDuplicateCount,
+    };
+  }
+
   const api = {
     SAVED_TAB_SESSIONS_KEY,
     buildSessionSnapshot,
@@ -429,6 +478,7 @@
     deleteSavedTabSession,
     getSavedTabSessions,
     addSavedTabSession,
+    appendSavedTabSessionTabs,
     renameSavedTabSession,
     updateSavedTabSessionTabs,
     normalizeSavedTabSessions,

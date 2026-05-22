@@ -92,6 +92,7 @@ const {
 
 const {
   addSavedTabSession: runtimeAddSavedTabSession,
+  appendSavedTabSessionTabs: runtimeAppendSavedTabSessionTabs,
   buildSessionSnapshot: runtimeBuildSessionSnapshot,
   createRestoredSessionGroups: runtimeCreateRestoredSessionGroups,
   getSavedTabSessions: runtimeGetSavedTabSessions,
@@ -133,6 +134,17 @@ let draggedPageChipEl = null;
 let pageChipDragState = null;
 let pageChipPlaceholderEl = null;
 let pageChipNewGroupSlotEl = null;
+let tabSessionPickerState = {
+  open: false,
+  mode: 'new',
+  source: 'current-window',
+  selectedTabIds: [],
+  newSessionName: '',
+  targetSessionId: '',
+  windowId: null,
+  groups: [],
+  savedSessions: [],
+};
 let chromeTabGroupsEnabled = false;
 let sleepControlEnabled = false;
 let importedChromeGroupMeta = normalizeChromeImportedGroupMeta
@@ -1097,7 +1109,7 @@ async function refreshTabSessionModel() {
   return realTabs;
 }
 
-async function saveTabsAsSession(tabs, selectedTabIds, source = 'manual') {
+async function saveTabsAsSession(tabs, selectedTabIds, source = 'manual', name = '') {
   if (!runtimeBuildSessionSnapshot || !runtimeAddSavedTabSession) {
     throw new Error('Session storage is unavailable');
   }
@@ -1108,6 +1120,7 @@ async function saveTabsAsSession(tabs, selectedTabIds, source = 'manual') {
     groupLookup: getTabGroupLookup(),
     selectedTabIds: [...selectedIds],
     source,
+    name,
     now: new Date().toISOString(),
   });
 
@@ -1142,11 +1155,46 @@ async function saveCurrentWindowTabSession() {
   return result;
 }
 
-async function saveSelectedTabSession(tabIds = [], source = 'selected') {
+async function saveSelectedTabSession(tabIds = [], source = 'selected', name = '') {
   const realTabs = await refreshTabSessionModel();
   const selectedTabs = getTabsByIds(tabIds, realTabs);
-  const result = await saveTabsAsSession(selectedTabs, tabIds, source);
+  const result = await saveTabsAsSession(selectedTabs, tabIds, source, name);
   return result;
+}
+
+async function appendTabsToExistingSavedSession(sessionId, tabIds = []) {
+  if (!runtimeBuildSessionSnapshot || !runtimeAppendSavedTabSessionTabs) {
+    throw new Error('Session storage is unavailable');
+  }
+
+  const realTabs = await refreshTabSessionModel();
+  const selectedTabs = getTabsByIds(tabIds, realTabs);
+  const selectedIds = new Set((tabIds || []).map(String).filter(Boolean));
+  const snapshot = runtimeBuildSessionSnapshot({
+    tabs: selectedTabs,
+    groupLookup: getTabGroupLookup(),
+    selectedTabIds: [...selectedIds],
+    source: 'append-existing',
+    now: new Date().toISOString(),
+  });
+
+  const result = await runtimeAppendSavedTabSessionTabs(sessionId, snapshot.tabs, {
+    skipDuplicateUrls: true,
+  });
+  const tabIdsToClose = selectedTabs
+    .filter(tab => selectedIds.has(String(tab?.id)) && (runtimeIsRestorableTabUrl ? runtimeIsRestorableTabUrl(tab?.url || '') : true))
+    .map(tab => getTabIdValue(tab?.id))
+    .filter(Number.isFinite);
+
+  if (tabIdsToClose.length > 0) {
+    await chrome.tabs.remove(tabIdsToClose);
+  }
+
+  return {
+    ...result,
+    selectedCount: snapshot.tabs.length,
+    closedTabIds: tabIdsToClose,
+  };
 }
 
 async function getTabSessionPickerContext() {
@@ -1172,6 +1220,238 @@ async function getTabSessionPickerContext() {
     .filter(group => group.tabs.length > 0);
 
   return { groups };
+}
+
+function getTabSessionPickerSelectedIds() {
+  return [...new Set((tabSessionPickerState.selectedTabIds || []).map(String).filter(Boolean))];
+}
+
+function getTabSessionPickerAllIds(groups = []) {
+  return [...new Set((Array.isArray(groups) ? groups : [])
+    .flatMap(group => Array.isArray(group?.tabs) ? group.tabs : [])
+    .map(tab => String(tab?.id || ''))
+    .filter(Boolean))];
+}
+
+function getScopedTabSessionPickerGroups(groups = [], scopeTabIds = null) {
+  if (!Array.isArray(scopeTabIds)) return Array.isArray(groups) ? groups : [];
+  const scopeIds = new Set(scopeTabIds.map(id => String(id)).filter(Boolean));
+  if (!scopeIds.size) return [];
+  return (Array.isArray(groups) ? groups : [])
+    .map(group => ({
+      ...group,
+      tabs: (Array.isArray(group?.tabs) ? group.tabs : [])
+        .filter(tab => scopeIds.has(String(tab?.id || ''))),
+    }))
+    .filter(group => group.tabs.length > 0);
+}
+
+function getTabSessionPickerGroupIds(groupKey = '', groups = []) {
+  const group = (Array.isArray(groups) ? groups : [])
+    .find(item => String(item?.key || item?.domain || '') === String(groupKey || ''));
+  return (group?.tabs || [])
+    .map(tab => String(tab?.id || ''))
+    .filter(Boolean);
+}
+
+function getSavedSessionOptionLabel(session = {}) {
+  const tabCount = Array.isArray(session?.tabs) ? session.tabs.length : 0;
+  const tabWord = runtimeT
+    ? (tabCount === 1 ? runtimeT('tabsWordSingular') : runtimeT('tabsWordPlural'))
+    : `tab${tabCount === 1 ? '' : 's'}`;
+  return `${session.name || 'Saved tabs'} (${tabCount} ${tabWord})`;
+}
+
+async function openTabSessionPicker({
+  source = 'current-window',
+  initialTabIds = null,
+  scopeTabIds = null,
+} = {}) {
+  const context = await getTabSessionPickerContext();
+  const savedSessions = runtimeGetSavedTabSessions ? await runtimeGetSavedTabSessions() : [];
+  const scopedGroups = getScopedTabSessionPickerGroups(context.groups, scopeTabIds);
+  const allIds = getTabSessionPickerAllIds(scopedGroups);
+  const allIdSet = new Set(allIds);
+  const initialSelectedIds = Array.isArray(initialTabIds)
+    ? [...new Set(initialTabIds.map(id => String(id)).filter(id => allIdSet.has(id)))]
+    : allIds;
+  tabSessionPickerState = {
+    open: true,
+    mode: tabSessionPickerState.mode === 'existing' && savedSessions.length ? 'existing' : 'new',
+    source,
+    selectedTabIds: initialSelectedIds,
+    newSessionName: tabSessionPickerState.newSessionName || '',
+    targetSessionId: tabSessionPickerState.targetSessionId || String(savedSessions[0]?.id || ''),
+    windowId: await getCurrentWindowId(),
+    groups: scopedGroups,
+    savedSessions,
+  };
+  renderOpenTabsArea();
+}
+
+function closeTabSessionPicker() {
+  tabSessionPickerState = {
+    open: false,
+    mode: 'new',
+    source: 'current-window',
+    selectedTabIds: [],
+    newSessionName: '',
+    targetSessionId: '',
+    windowId: null,
+    groups: [],
+    savedSessions: [],
+  };
+  renderOpenTabsArea();
+}
+
+function renderTabSessionPicker(groups = tabSessionPickerState.groups) {
+  if (!tabSessionPickerState.open) return '';
+  const pickerGroups = Array.isArray(groups) ? groups : [];
+  const savedSessions = Array.isArray(tabSessionPickerState.savedSessions)
+    ? tabSessionPickerState.savedSessions
+    : [];
+  const selectedIds = new Set(getTabSessionPickerSelectedIds());
+  const selectedCount = selectedIds.size;
+  const existingDisabled = savedSessions.length === 0;
+  const mode = tabSessionPickerState.mode === 'existing' && !existingDisabled ? 'existing' : 'new';
+  const targetSessionId = tabSessionPickerState.targetSessionId || String(savedSessions[0]?.id || '');
+  const safeTargetSessionId = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(targetSessionId) : targetSessionId.replace(/"/g, '&quot;');
+  const safeSelectLabel = runtimeEscapeHtmlAttribute
+    ? runtimeEscapeHtmlAttribute(runtimeT ? runtimeT('sessionPickerTargetSessionLabel') : 'Target session')
+    : 'Target session';
+  const newSessionName = String(tabSessionPickerState.newSessionName || '');
+  const safeNewSessionName = runtimeEscapeHtmlAttribute
+    ? runtimeEscapeHtmlAttribute(newSessionName)
+    : newSessionName.replace(/"/g, '&quot;');
+  const namePlaceholder = runtimeT ? runtimeT('sessionPickerNewSessionNamePlaceholder') : 'Group title (optional)';
+  const safeNamePlaceholder = runtimeEscapeHtmlAttribute
+    ? runtimeEscapeHtmlAttribute(namePlaceholder)
+    : namePlaceholder.replace(/"/g, '&quot;');
+  const listHtml = pickerGroups.length
+    ? pickerGroups.map(group => {
+      const groupKey = String(group.key || group.domain || '');
+      const safeGroupKey = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(groupKey) : groupKey.replace(/"/g, '&quot;');
+      const tabs = Array.isArray(group.tabs)
+        ? (group.key ? group.tabs : getOrderedUniqueTabsForGroup(group))
+          .filter(tab => runtimeIsRestorableTabUrl ? runtimeIsRestorableTabUrl(tab.url || '') : true)
+        : [];
+      const groupIds = tabs.map(tab => String(tab?.id || '')).filter(Boolean);
+      const checked = groupIds.length > 0 && groupIds.every(id => selectedIds.has(id));
+      const rawGroupLabel = group.label || (group.domain ? getGroupDisplayLabel(group) : 'Group');
+      const groupLabel = runtimeEscapeHtml ? runtimeEscapeHtml(rawGroupLabel) : rawGroupLabel;
+      return `
+        <section class="session-picker-group">
+          <label class="session-picker-group-header">
+            <input type="checkbox" data-action="toggle-session-picker-group" data-group-key="${safeGroupKey}"${checked ? ' checked' : ''}>
+            <span class="session-picker-group-title">${groupLabel}</span>
+            <span class="session-picker-group-count">${tabs.length}</span>
+          </label>
+          <div class="session-picker-tabs">
+            ${tabs.map(tab => {
+              const tabId = String(tab?.id || '');
+              const safeTabId = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tabId) : tabId.replace(/"/g, '&quot;');
+              const safeTitle = runtimeEscapeHtml ? runtimeEscapeHtml(tab.title || tab.url || 'Tab') : tab.title || tab.url || 'Tab';
+              const safeUrlText = runtimeEscapeHtml ? runtimeEscapeHtml(getTabCanonicalUrl(tab)) : getTabCanonicalUrl(tab);
+              const iconData = runtimeGetIconSources ? runtimeGetIconSources(tab, 16) : { sources: [], hostname: '' };
+              const faviconUrl = iconData.sources?.[0] || '';
+              const fallbackUrl = iconData.sources?.[1] || '';
+              const fallbackLabel = runtimeGetFallbackLabel ? runtimeGetFallbackLabel(tab.title || tab.url || '', iconData.hostname || '') : '?';
+              return `
+                <label class="session-picker-tab-row">
+                  <input type="checkbox" data-action="toggle-session-picker-tab" data-tab-id="${safeTabId}"${selectedIds.has(tabId) ? ' checked' : ''}>
+                  <span class="session-picker-tab-title">
+                    ${faviconUrl ? `<img src="${runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(faviconUrl) : faviconUrl}" alt="" data-fallback-src="${runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(fallbackUrl) : fallbackUrl}">` : ''}
+                    <span class="inline-favicon-fallback"${faviconUrl ? ' style="display:none"' : ''}>${runtimeEscapeHtml ? runtimeEscapeHtml(fallbackLabel) : fallbackLabel}</span>
+                    <span>${safeTitle}</span>
+                  </span>
+                  <span class="session-picker-tab-url">${safeUrlText}</span>
+                </label>`;
+            }).join('')}
+          </div>
+        </section>`;
+    }).join('')
+    : `<div class="session-picker-empty">${runtimeT ? runtimeT('sessionPickerEmpty') : 'No restorable tabs in this window.'}</div>`;
+
+  return `
+    <section class="session-picker" id="tabSessionPicker" aria-label="${runtimeT ? runtimeT('sessionPickerTitle') : 'Choose what to save'}">
+      <div class="session-picker-header">
+        <div>
+          <div class="session-picker-title">${runtimeT ? runtimeT('sessionPickerTitle') : 'Choose what to save'}</div>
+        </div>
+        <button class="group-action-icon group-action-close" type="button" data-action="close-session-picker" aria-label="${runtimeT ? runtimeT('sessionPickerClose') : 'Close tab picker'}">
+          ${ICONS.close}
+        </button>
+      </div>
+      <div class="session-picker-list">${listHtml}</div>
+      <div class="session-picker-footer">
+        <span class="session-picker-count">${runtimeT ? runtimeT('sessionPickerSelectedCount', { count: selectedCount }) : `${selectedCount} selected`}</span>
+        <div class="session-picker-save-mode" role="group" aria-label="${runtimeT ? runtimeT('sessionPickerModeLabel') : 'Save mode'}">
+          <button class="session-picker-mode-button${mode === 'new' ? ' is-active' : ''}" type="button" data-action="select-session-picker-mode" data-session-picker-mode="new" aria-pressed="${mode === 'new'}">${runtimeT ? runtimeT('sessionPickerNewSession') : 'New group'}</button>
+          <button class="session-picker-mode-button${mode === 'existing' ? ' is-active' : ''}" type="button" data-action="select-session-picker-mode" data-session-picker-mode="existing" aria-pressed="${mode === 'existing'}"${existingDisabled ? ' disabled' : ''}>${runtimeT ? runtimeT('sessionPickerExistingSession') : 'Existing group'}</button>
+        </div>
+        <input class="session-picker-name-input" type="text" data-action="change-session-picker-new-name" value="${safeNewSessionName}" placeholder="${safeNamePlaceholder}" aria-label="${safeNamePlaceholder}"${mode === 'new' ? '' : ' hidden disabled'}>
+        <select class="session-picker-target-select" data-action="change-session-picker-target" aria-label="${safeSelectLabel}"${mode === 'existing' && !existingDisabled ? '' : ' hidden disabled'}>
+          ${savedSessions.length
+            ? savedSessions.map(session => {
+              const id = String(session?.id || '');
+              const safeId = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(id) : id.replace(/"/g, '&quot;');
+              const label = getSavedSessionOptionLabel(session);
+              return `<option value="${safeId}"${id === targetSessionId ? ' selected' : ''}>${runtimeEscapeHtml ? runtimeEscapeHtml(label) : label}</option>`;
+            }).join('')
+            : `<option value="">${runtimeT ? runtimeT('sessionPickerNoSavedSessions') : 'No saved sessions yet'}</option>`}
+        </select>
+        <button class="action-btn save-tabs" type="button" data-action="save-selected-session-tabs"${selectedCount ? '' : ' disabled'}>
+          ${mode === 'existing'
+            ? (runtimeT ? runtimeT('sessionPickerAddToExisting') : 'Add to session')
+            : (runtimeT ? runtimeT('sessionPickerSaveAndClose') : 'Save and close')}
+        </button>
+      </div>
+    </section>`;
+}
+
+async function submitTabSessionPicker() {
+  const selectedIds = getTabSessionPickerSelectedIds();
+  if (!selectedIds.length) {
+    showToast(runtimeT ? runtimeT('toastNoSessionTabsSelected') : 'Select at least one tab');
+    return;
+  }
+
+  try {
+    if (tabSessionPickerState.mode === 'existing') {
+      const targetSessionId = tabSessionPickerState.targetSessionId || String(tabSessionPickerState.savedSessions?.[0]?.id || '');
+      if (!targetSessionId) throw new Error('Session not found');
+      const result = await appendTabsToExistingSavedSession(targetSessionId, selectedIds);
+      tabSessionPickerState = {
+        ...tabSessionPickerState,
+        open: false,
+        newSessionName: '',
+      };
+      await renderDashboard();
+      const skipped = result?.skippedDuplicateCount || 0;
+      showToast(runtimeT
+        ? runtimeT('toastSessionTabsAdded', { count: result?.appendedCount || 0, skipped })
+        : `Added ${result?.appendedCount || 0} tabs${skipped ? `, skipped ${skipped} duplicates` : ''}`);
+      return;
+    }
+
+    const newSessionName = String(tabSessionPickerState.newSessionName || '').trim();
+    tabSessionPickerState = {
+      ...tabSessionPickerState,
+      open: false,
+      newSessionName: '',
+    };
+    const result = await saveSelectedTabSession(
+      selectedIds,
+      tabSessionPickerState.source || 'selected',
+      newSessionName
+    );
+    showToast(runtimeT
+      ? runtimeT('toastSessionSaved', { count: result?.session?.tabs?.length || 0 })
+      : 'Session saved');
+  } catch (err) {
+    console.error('[tab-harbor] Failed to save selected tabs:', err);
+    showToast(runtimeT ? runtimeT('toastSessionActionFailed') : 'Could not update saved tabs');
+  }
 }
 
 async function openSavedTabsInCurrentWindow(tabs = []) {
@@ -2725,6 +3005,12 @@ function renderOpenTabsSummary(realTabs = getRealTabs()) {
         <button class="section-icon-action section-icon-action-close" type="button" data-action="close-all-open-tabs" aria-label="${runtimeT ? runtimeT('closeAllTabsButton') : 'Close all tabs'}" data-tooltip="${runtimeT ? runtimeT('closeAllTabsButton') : 'Close all tabs'}">${ICONS.close}</button>`;
     }
     syncWorkspaceTopNavMarkup(renderGroupNavArea(domainGroups), true);
+    if (openTabsMissionsEl) {
+      openTabsMissionsEl.querySelector('#tabSessionPicker')?.remove();
+      if (tabSessionPickerState.open) {
+        openTabsMissionsEl.insertAdjacentHTML('afterbegin', renderTabSessionPicker());
+      }
+    }
     openTabsSection.style.display = 'block';
     return;
   }
@@ -2951,7 +3237,7 @@ function renderOpenTabsArea(realTabs = getRealTabs()) {
         <button class="section-icon-action" type="button" data-action="save-current-window-session" aria-label="${runtimeT ? runtimeT('saveSessionButton') : 'Save session'}" data-tooltip="${runtimeT ? runtimeT('saveSessionButton') : 'Save session'}">${ICONS.archive}</button>
         <button class="section-icon-action section-icon-action-close" type="button" data-action="close-all-open-tabs" aria-label="${runtimeT ? runtimeT('closeAllTabsButton') : 'Close all tabs'}" data-tooltip="${runtimeT ? runtimeT('closeAllTabsButton') : 'Close all tabs'}">${ICONS.close}</button>`;
     }
-    if (openTabsMissionsEl) openTabsMissionsEl.innerHTML = domainGroups.map(g => renderDomainCard(g)).join('');
+    if (openTabsMissionsEl) openTabsMissionsEl.innerHTML = `${renderTabSessionPicker()}${domainGroups.map(g => renderDomainCard(g)).join('')}`;
     syncWorkspaceTopNavMarkup(renderGroupNavArea(domainGroups), true);
     openTabsSection.style.display = 'block';
   } else if (openTabsSection) {
@@ -3245,6 +3531,69 @@ document.addEventListener('click', async (e) => {
 
   const card = actionEl.closest('.mission-card');
 
+  if (action === 'save-current-window-session') {
+    if (!actionEl.closest('#homePage')) return;
+    e.preventDefault();
+    await openTabSessionPicker({ source: 'current-window' });
+    return;
+  }
+
+  if (action === 'close-session-picker') {
+    e.preventDefault();
+    closeTabSessionPicker();
+    return;
+  }
+
+  if (action === 'select-session-picker-mode') {
+    e.preventDefault();
+    const nextMode = actionEl.dataset.sessionPickerMode === 'existing' ? 'existing' : 'new';
+    if (nextMode === 'existing' && !tabSessionPickerState.savedSessions?.length) return;
+    tabSessionPickerState = {
+      ...tabSessionPickerState,
+      mode: nextMode,
+      targetSessionId: tabSessionPickerState.targetSessionId || String(tabSessionPickerState.savedSessions?.[0]?.id || ''),
+    };
+    renderOpenTabsArea();
+    return;
+  }
+
+  if (action === 'toggle-session-picker-group') {
+    const groupKey = actionEl.dataset.groupKey || '';
+    const groupIds = getTabSessionPickerGroupIds(groupKey, tabSessionPickerState.groups);
+    const selected = new Set(getTabSessionPickerSelectedIds());
+    const checked = groupIds.length > 0 && groupIds.every(id => selected.has(id));
+    groupIds.forEach(id => {
+      if (checked) selected.delete(id);
+      else selected.add(id);
+    });
+    tabSessionPickerState = {
+      ...tabSessionPickerState,
+      selectedTabIds: [...selected],
+    };
+    renderOpenTabsArea();
+    return;
+  }
+
+  if (action === 'toggle-session-picker-tab') {
+    const tabId = String(actionEl.dataset.tabId || '');
+    if (!tabId) return;
+    const selected = new Set(getTabSessionPickerSelectedIds());
+    if (selected.has(tabId)) selected.delete(tabId);
+    else selected.add(tabId);
+    tabSessionPickerState = {
+      ...tabSessionPickerState,
+      selectedTabIds: [...selected],
+    };
+    renderOpenTabsArea();
+    return;
+  }
+
+  if (action === 'save-selected-session-tabs') {
+    e.preventDefault();
+    await submitTabSessionPicker();
+    return;
+  }
+
   if (action === 'rename-session-group') {
     e.stopPropagation();
     const groupKey = actionEl.dataset.groupKey || '';
@@ -3429,15 +3778,11 @@ document.addEventListener('click', async (e) => {
     const tabId = actionEl.dataset.tabId || '';
     if (!tabId) return;
 
-    try {
-      const result = await saveSelectedTabSession([tabId], 'single-tab');
-      showToast(runtimeT
-        ? runtimeT('toastSessionSaved', { count: result?.session?.tabs?.length || 0 })
-        : 'Session saved');
-    } catch (err) {
-      console.error('[tab-harbor] Failed to save tab session:', err);
-      showToast(runtimeT ? runtimeT('toastSessionActionFailed') : 'Could not update saved tabs');
-    }
+    await openTabSessionPicker({
+      source: 'single-tab',
+      initialTabIds: [tabId],
+      scopeTabIds: [tabId],
+    });
     return;
   }
 
@@ -3577,6 +3922,7 @@ document.addEventListener('click', async (e) => {
 
   // ---- Save a whole domain group as one session snapshot (then close it) ----
   if (action === 'save-domain-session') {
+    e.preventDefault();
     const domainId = actionEl.dataset.domainId || '';
     const group = domainGroups.find(g => getStableGroupId(g.domain) === domainId);
     if (!group) return;
@@ -3586,15 +3932,11 @@ document.addEventListener('click', async (e) => {
       .filter(Boolean);
     if (!tabIds.length) return;
 
-    try {
-      const result = await saveSelectedTabSession(tabIds, 'group');
-      showToast(runtimeT
-        ? runtimeT('toastSessionSaved', { count: result?.session?.tabs?.length || 0 })
-        : 'Session saved');
-    } catch (err) {
-      console.error('[tab-harbor] Failed to save group session:', err);
-      showToast(runtimeT ? runtimeT('toastSessionActionFailed') : 'Could not update saved tabs');
-    }
+    await openTabSessionPicker({
+      source: 'group',
+      initialTabIds: tabIds,
+      scopeTabIds: tabIds,
+    });
     return;
   }
 
@@ -4198,6 +4540,15 @@ document.addEventListener('input', async (e) => {
     return;
   }
 
+  const sessionPickerNameInput = e.target.closest('[data-action="change-session-picker-new-name"]');
+  if (sessionPickerNameInput) {
+    tabSessionPickerState = {
+      ...tabSessionPickerState,
+      newSessionName: sessionPickerNameInput.value || '',
+    };
+    return;
+  }
+
   if (e.target.id !== 'savedSearchInput') return;
   savedSearchQuery = e.target.value.trim();
   await renderDeferredColumn();
@@ -4228,6 +4579,15 @@ document.addEventListener('input', async (e) => {
 });
 
 document.addEventListener('change', async (e) => {
+  const sessionPickerTarget = e.target.closest('[data-action="change-session-picker-target"]');
+  if (sessionPickerTarget) {
+    tabSessionPickerState = {
+      ...tabSessionPickerState,
+      targetSessionId: sessionPickerTarget.value || '',
+    };
+    return;
+  }
+
   if (e.target.id !== 'themeBackgroundInput') return;
 
   const file = e.target.files?.[0];

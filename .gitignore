@@ -1,5 +1,6 @@
 extension/config.local.js
 .DS_Store
 extension.zip
+dist/*.zip
 .idea
 .vscode

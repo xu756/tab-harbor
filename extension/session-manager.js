@@ -1235,6 +1235,7 @@ function detachSavedSessionTabToNewSession({
     }
 
     if (action === 'save-current-window-session') {
+      if (actionEl.closest('#homePage')) return;
       event.preventDefault();
       await saveCurrentWindowSession();
       return;

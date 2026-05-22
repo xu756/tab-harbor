@@ -8,6 +8,7 @@ const {
   createSavedTabSessionFromTab,
   createRestoredSessionGroups,
   renameSavedTabSession,
+  appendSavedTabSessionTabs,
   updateSavedTabSessionTabs,
   normalizeSavedTabSessions,
 } = require('./tab-sessions.js');
@@ -193,6 +194,92 @@ test('updateSavedTabSessionTabs removes the session when no tabs remain', async 
 
   const updated = await updateSavedTabSessionTabs('session-a', []);
   assert.equal(updated.length, 0);
+});
+
+test('appendSavedTabSessionTabs appends new tabs, skips duplicate urls, and rebuilds groups', async () => {
+  const store = {
+    savedTabSessions: [
+      {
+        id: 'session-a',
+        name: 'Session',
+        savedAt: '2026-05-22T08:00:00.000Z',
+        source: 'manual',
+        tabs: [
+          { url: 'https://a.test', title: 'A', groupKey: 'group-a', groupLabel: 'Group A' },
+        ],
+        groups: [
+          { key: 'group-a', label: 'Group A', manualGroupId: '', tabUrls: ['https://a.test'] },
+        ],
+      },
+    ],
+  };
+  global.chrome = {
+    storage: {
+      local: {
+        async get(key) {
+          return { [key]: store[key] };
+        },
+        async set(next) {
+          Object.assign(store, next);
+        },
+      },
+    },
+  };
+
+  const result = await appendSavedTabSessionTabs('session-a', [
+    {
+      url: 'extension://noogafoofpebimajpfpamcfhoaifemoa/suspended.html#ttl=Duplicate%20A&uri=https%3A%2F%2Fa.test',
+      title: 'Duplicate A',
+      groupKey: 'group-a',
+      groupLabel: 'Group A',
+    },
+    { url: 'https://b.test', title: 'B', groupKey: 'group-b', groupLabel: 'Group B' },
+  ]);
+
+  assert.equal(result.appendedCount, 1);
+  assert.equal(result.skippedDuplicateCount, 1);
+  assert.deepEqual(result.session.tabs.map(tab => tab.url), ['https://a.test', 'https://b.test']);
+  assert.deepEqual(result.session.groups.map(group => group.key), ['group-a', 'group-b']);
+  assert.equal(result.session.id, 'session-a');
+  assert.equal(result.session.name, 'Session');
+  assert.equal(result.session.savedAt, '2026-05-22T08:00:00.000Z');
+  assert.equal(result.session.source, 'manual');
+});
+
+test('appendSavedTabSessionTabs rejects missing target sessions and invalid tabs', async () => {
+  const store = {
+    savedTabSessions: [
+      {
+        id: 'session-a',
+        name: 'Session',
+        savedAt: '2026-05-22T08:00:00.000Z',
+        source: 'manual',
+        tabs: [{ url: 'https://a.test', title: 'A' }],
+        groups: [],
+      },
+    ],
+  };
+  global.chrome = {
+    storage: {
+      local: {
+        async get(key) {
+          return { [key]: store[key] };
+        },
+        async set(next) {
+          Object.assign(store, next);
+        },
+      },
+    },
+  };
+
+  await assert.rejects(
+    () => appendSavedTabSessionTabs('missing', [{ url: 'https://b.test', title: 'B' }]),
+    /session not found/i
+  );
+  await assert.rejects(
+    () => appendSavedTabSessionTabs('session-a', [{ url: 'chrome://settings', title: 'Settings' }]),
+    /no restorable tabs selected/i
+  );
 });
 
 test('createSavedTabSessionFromTab derives name, source, savedAt, tabs, and groups from one dragged tab', () => {
