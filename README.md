@@ -94,7 +94,7 @@ That also means it is intentionally lightweight. There is no backend, no sync ac
 2. Open `chrome://extensions`
 3. Turn on **Developer mode**
 4. Click **Load unpacked**
-5. Select the [`extension/`](extension/) folder
+5. Select the [`extension/`](extension/) folder in Chrome, or the repo root in Edge
 6. Open a new tab
 
 ## 🔒 Fully Local

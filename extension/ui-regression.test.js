@@ -343,6 +343,14 @@ test('manifest keeps only permissions required by the shipped runtime', () => {
   assert.doesNotMatch(manifest, /"activeTab"/);
 });
 
+test('root manifest mirrors the Edge unpacked entry points', () => {
+  const manifest = fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8');
+
+  assert.match(manifest, /"chrome_url_overrides": \{ "newtab": "extension\/index\.html" \}/);
+  assert.match(manifest, /"service_worker": "extension\/background\.js"/);
+  assert.match(manifest, /"default_popup": "extension\/popup\/popup\.html"/);
+});
+
 test('footer credits point to the repo and OO GitHub profile', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 

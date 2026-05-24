@@ -15,13 +15,21 @@ async function updateBadge() {
   }
 }
 
+function getTabHarborDashboardUrls() {
+  const extensionId = chrome.runtime.id;
+  return new Set([
+    `chrome-extension://${extensionId}/index.html`,
+    `chrome-extension://${extensionId}/extension/index.html`,
+  ]);
+}
+
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
 // Notify Tab Harbor pages when tabs change so they can refresh
 async function notifyTabHarborPages(eventMeta = {}) {
   try {
     // Find all Tab Harbor dashboard pages
-    const extensionId = chrome.runtime.id;
+    const dashboardUrls = getTabHarborDashboardUrls();
 
     // Query all tabs and filter manually for more reliable matching
     const allTabs = await chrome.tabs.query({});
@@ -30,9 +38,10 @@ async function notifyTabHarborPages(eventMeta = {}) {
       if (!tab.url) return false;
       // Tab Harbor can appear as either:
       // 1. chrome-extension://EXTENSION_ID/index.html (direct access)
-      // 2. chrome://newtab/ with title "Tab Harbor" (new tab override)
+      // 2. chrome-extension://EXTENSION_ID/extension/index.html (root manifest entry)
+      // 3. chrome://newtab/ with title "Tab Harbor" (new tab override)
       return (
-        tab.url.startsWith(`chrome-extension://${extensionId}/index.html`) ||
+        dashboardUrls.has(tab.url) ||
         (tab.url === 'chrome://newtab/' && tab.title === 'Tab Harbor')
       );
     });

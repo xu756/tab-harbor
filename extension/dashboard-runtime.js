@@ -706,9 +706,7 @@ function warmHitokotoCacheInBackground() {
 
 async function fetchOpenTabs() {
   try {
-    const extensionId = chrome.runtime.id;
-    // The new URL for this page is now index.html (not newtab.html)
-    const newtabUrl = `chrome-extension://${extensionId}/index.html`;
+    const newtabUrl = window.location.href;
 
     const tabs = await chrome.tabs.query({});
     openTabs = tabs.map(t => {
@@ -2531,8 +2529,7 @@ async function closeDuplicateTabs(urls, keepOne = true) {
  * Closes all duplicate Tab Harbor new-tab pages except the current one.
  */
 async function closeTabOutDupes() {
-  const extensionId = chrome.runtime.id;
-  const newtabUrl = `chrome-extension://${extensionId}/index.html`;
+  const newtabUrl = window.location.href;
 
   const allTabs = await chrome.tabs.query({});
   const currentWindow = await chrome.windows.getCurrent();
@@ -3389,8 +3386,7 @@ async function collapseChromeGroupsForCurrentTabHarborTab() {
 
   const currentTab = await resolveCurrentDashboardTab();
 
-  const extensionId = chrome.runtime.id;
-  const newtabUrl = `chrome-extension://${extensionId}/index.html`;
+  const newtabUrl = window.location.href;
   const isTabHarborTab = currentTab?.url === newtabUrl || currentTab?.url === 'chrome://newtab/';
   if (!currentTab?.windowId || !isTabHarborTab) return;
   await collapseChromeTabGroupsInWindow(currentTab.windowId);
