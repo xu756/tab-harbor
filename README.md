@@ -80,9 +80,7 @@ That also means it is intentionally lightweight. There is no backend, no sync ac
 
 1. Open Tab Harbor in the Chrome Web Store:
 
-   ```text
-   https://chromewebstore.google.com/detail/tab-harbor/bkjihmeifgjifhkleokclpobdfnhiodf?authuser=0&hl=zh-CN
-   ```
+   [Open Tab Harbor in the Chrome Web Store](https://chromewebstore.google.com/detail/tab-harbor/bkjihmeifgjifhkleokclpobdfnhiodf?authuser=0&hl=zh-CN)
 
 2. Install it from the store.
 3. Open a new tab in Chrome.
