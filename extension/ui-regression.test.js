@@ -124,6 +124,21 @@ test('group close control is icon-only and tab rows expose session save actions'
   assert.match(helperJs, /archive: `<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 1024 1024" fill="currentColor" aria-hidden="true"><path d="M845\.312 0\.512H32\.512v1022\.976h958\.976v-876\.8L845\.312 0\.512z/);
 });
 
+test('open group cards expose quiet context note controls', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(runtimeJs, /TabHarborGroupContext/);
+  assert.match(runtimeJs, /let groupContextState =/);
+  assert.match(runtimeJs, /function renderGroupContextRow\(group/);
+  assert.match(runtimeJs, /class="group-context-row/);
+  assert.match(runtimeJs, /data-action="open-group-context-editor"/);
+  assert.match(runtimeJs, /data-action="save-group-context"/);
+  assert.match(runtimeJs, /data-action="clear-group-context"/);
+  assert.match(runtimeJs, /runtimePruneOpenGroupContext/);
+  assert.match(css, /\.group-context-row/);
+  assert.match(css, /\.group-context-editor/);
+});
+
 test('desk settings separates appearance and feature controls', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 

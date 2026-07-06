@@ -98,6 +98,16 @@ const {
   getSavedTabSessions: runtimeGetSavedTabSessions,
 } = globalThis.TabHarborTabSessions || {};
 
+const {
+  GROUP_CONTEXT_STATUSES: runtimeGroupContextStatuses = ['working', 'reading', 'later', 'done'],
+  clearOpenGroupContext: runtimeClearOpenGroupContext,
+  getOpenGroupContext: runtimeGetOpenGroupContext,
+  loadGroupContextState: runtimeLoadGroupContextState,
+  normalizeGroupContextState: runtimeNormalizeGroupContextState,
+  pruneStoredOpenGroupContext: runtimePruneOpenGroupContext,
+  saveOpenGroupContext: runtimeSaveOpenGroupContext,
+} = globalThis.TabHarborGroupContext || {};
+
 /* ----------------------------------------------------------------
    CHROME TABS — Direct API Access
 
@@ -120,6 +130,15 @@ const GROUP_TAB_ORDER_KEY = 'groupTabOrder';
 let groupLabelOverrides = {};
 const GROUP_LABEL_OVERRIDES_KEY = 'groupLabelOverrides';
 let groupRenameEditorState = null;
+let groupContextState = runtimeNormalizeGroupContextState
+  ? runtimeNormalizeGroupContextState()
+  : { openGroups: {}, savedSessions: {} };
+let groupContextEditorState = {
+  open: false,
+  groupKey: '',
+  status: '',
+  note: '',
+};
 let draggedGroupId = '';
 let dragStartPoint = null;
 let suppressJumpUntil = 0;
@@ -274,6 +293,21 @@ async function saveGroupLabelOverrides(nextState) {
   groupLabelOverrides = normalizeGroupLabelOverrides(nextState);
   await chrome.storage.local.set({ [GROUP_LABEL_OVERRIDES_KEY]: groupLabelOverrides });
   return groupLabelOverrides;
+}
+
+async function loadGroupContextState() {
+  if (!runtimeLoadGroupContextState) return groupContextState;
+  groupContextState = await runtimeLoadGroupContextState();
+  return groupContextState;
+}
+
+async function pruneGroupContextForGroups(groups = domainGroups) {
+  if (!runtimePruneOpenGroupContext) return groupContextState;
+  const groupKeys = (Array.isArray(groups) ? groups : [])
+    .map(group => String(group?.domain || ''))
+    .filter(Boolean);
+  groupContextState = await runtimePruneOpenGroupContext(groupKeys);
+  return groupContextState;
 }
 
 function reorderGroupTabsByStoredUrls(tabs, groupKey) {
@@ -2704,6 +2738,140 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
 
 
 /* ----------------------------------------------------------------
+   GROUP CONTEXT NOTES
+   ---------------------------------------------------------------- */
+
+function getGroupContextStatusLabel(status = '') {
+  const normalized = String(status || '').trim().toLowerCase();
+  const labelKey = {
+    working: 'groupContextStatusWorking',
+    reading: 'groupContextStatusReading',
+    later: 'groupContextStatusLater',
+    done: 'groupContextStatusDone',
+  }[normalized] || 'groupContextStatusNone';
+  const fallback = {
+    working: 'Working',
+    reading: 'Reading',
+    later: 'Later',
+    done: 'Done',
+  }[normalized] || 'No status';
+  return runtimeT ? runtimeT(labelKey) : fallback;
+}
+
+function getGroupContextForGroup(groupKey = '') {
+  if (runtimeGetOpenGroupContext) {
+    return runtimeGetOpenGroupContext(groupContextState, groupKey);
+  }
+  return groupContextState?.openGroups?.[String(groupKey || '')] || null;
+}
+
+function isGroupContextEditorOpen(groupKey = '') {
+  return groupContextEditorState.open && groupContextEditorState.groupKey === String(groupKey || '');
+}
+
+function getGroupContextEditorDraftFromDom() {
+  if (!groupContextEditorState.open) return groupContextEditorState;
+  const selector = `.group-context-editor[data-group-key="${CSS.escape(groupContextEditorState.groupKey)}"]`;
+  const editor = document.querySelector(selector);
+  if (!editor) return groupContextEditorState;
+  const noteInput = editor.querySelector('[data-group-context-note-input]');
+  return {
+    ...groupContextEditorState,
+    note: noteInput ? noteInput.value : groupContextEditorState.note,
+  };
+}
+
+function openGroupContextEditor(groupKey = '') {
+  const cleanGroupKey = String(groupKey || '');
+  const context = getGroupContextForGroup(cleanGroupKey);
+  groupContextEditorState = {
+    open: true,
+    groupKey: cleanGroupKey,
+    status: context?.status || '',
+    note: context?.note || '',
+  };
+}
+
+function closeGroupContextEditor() {
+  groupContextEditorState = {
+    open: false,
+    groupKey: '',
+    status: '',
+    note: '',
+  };
+}
+
+function renderGroupContextEditor(groupKey = '') {
+  if (!isGroupContextEditorOpen(groupKey)) return '';
+  const safeGroupKey = runtimeEscapeHtmlAttribute
+    ? runtimeEscapeHtmlAttribute(groupKey)
+    : String(groupKey || '').replace(/"/g, '&quot;');
+  const currentStatus = String(groupContextEditorState.status || '');
+  const currentNote = String(groupContextEditorState.note || '');
+  const safeNote = runtimeEscapeHtml ? runtimeEscapeHtml(currentNote) : currentNote;
+  const statusIds = ['', ...runtimeGroupContextStatuses];
+  const statusControls = statusIds.map(status => {
+    const safeStatus = runtimeEscapeHtmlAttribute
+      ? runtimeEscapeHtmlAttribute(status)
+      : String(status).replace(/"/g, '&quot;');
+    const isActive = status === currentStatus;
+    return `
+      <button class="group-context-status-option${isActive ? ' is-active' : ''}" type="button" data-action="change-group-context-status" data-group-key="${safeGroupKey}" data-context-status="${safeStatus}" aria-pressed="${isActive ? 'true' : 'false'}">
+        ${runtimeEscapeHtml ? runtimeEscapeHtml(getGroupContextStatusLabel(status)) : getGroupContextStatusLabel(status)}
+      </button>`;
+  }).join('');
+
+  return `
+    <div class="group-context-editor" role="dialog" aria-label="${runtimeT ? runtimeT('groupContextEditorLabel') : 'Group note'}" data-group-key="${safeGroupKey}">
+      <div class="group-context-status-options" role="group" aria-label="${runtimeT ? runtimeT('groupContextStatusLabel') : 'Status'}">
+        ${statusControls}
+      </div>
+      <label class="group-context-note-field">
+        <span>${runtimeT ? runtimeT('groupContextNoteLabel') : 'Group note'}</span>
+        <textarea class="group-context-note-input" data-group-context-note-input rows="3" maxlength="280" placeholder="${runtimeT ? runtimeT('groupContextNotePlaceholder') : 'Leave a short note for this group.'}">${safeNote}</textarea>
+      </label>
+      <div class="group-context-editor-actions">
+        <button class="theme-menu-action is-secondary" type="button" data-action="close-group-context-editor" data-group-key="${safeGroupKey}">${runtimeT ? runtimeT('cancelButton') : 'Cancel'}</button>
+        <button class="theme-menu-action is-secondary" type="button" data-action="clear-group-context" data-group-key="${safeGroupKey}">${runtimeT ? runtimeT('clearText') : 'Clear'}</button>
+        <button class="theme-menu-action" type="button" data-action="save-group-context" data-group-key="${safeGroupKey}">${runtimeT ? runtimeT('saveButton') : 'Save'}</button>
+      </div>
+    </div>`;
+}
+
+function renderGroupContextRow(group) {
+  const groupKey = String(group?.domain || '');
+  const context = getGroupContextForGroup(groupKey);
+  const hasContext = Boolean(context?.status || context?.note);
+  const statusHtml = context?.status
+    ? `<span class="group-context-status group-context-status-${runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(context.status) : context.status}">${runtimeEscapeHtml ? runtimeEscapeHtml(getGroupContextStatusLabel(context.status)) : getGroupContextStatusLabel(context.status)}</span>`
+    : '';
+  const noteHtml = context?.note
+    ? `<span class="group-context-note">${runtimeEscapeHtml ? runtimeEscapeHtml(context.note) : context.note}</span>`
+    : '';
+  const safeGroupKey = runtimeEscapeHtmlAttribute
+    ? runtimeEscapeHtmlAttribute(groupKey)
+    : groupKey.replace(/"/g, '&quot;');
+  const actionLabel = hasContext
+    ? (runtimeT ? runtimeT('groupContextEditNote') : 'Edit note')
+    : (runtimeT ? runtimeT('groupContextAddNote') : 'Add note');
+
+  return `
+    <div class="group-context-wrap">
+      <div class="group-context-row${hasContext ? ' has-context' : ''}">
+        <div class="group-context-main">
+          ${statusHtml}
+          ${noteHtml}
+        </div>
+        <button class="group-context-trigger" type="button" data-action="open-group-context-editor" data-group-key="${safeGroupKey}" aria-expanded="${isGroupContextEditorOpen(groupKey) ? 'true' : 'false'}">
+          ${runtimeEscapeHtml ? runtimeEscapeHtml(actionLabel) : actionLabel}
+        </button>
+      </div>
+      ${renderGroupContextEditor(groupKey)}
+    </div>`;
+}
+
+
+/* ----------------------------------------------------------------
    DOMAIN CARD RENDERER
    ---------------------------------------------------------------- */
 
@@ -2834,6 +3002,7 @@ function renderDomainCard(group) {
             ${closeAllButton}
           </div>
         </div>
+        ${renderGroupContextRow(group)}
         <div class="mission-pages">${pageChips}</div>
         ${actionsHtml ? `<div class="actions">${actionsHtml}</div>` : ''}
       </div>
@@ -3315,9 +3484,11 @@ function renderOpenTabsArea(realTabs = getRealTabs()) {
 
 async function renderOpenTabsLayout({ rebuildGroups = true, syncChrome = false, patchDom = false, changedGroupKeys = [] } = {}) {
   const realTabs = getRealTabs();
+  await loadGroupContextState();
   if (rebuildGroups) {
     await buildDomainGroups(realTabs);
   }
+  await pruneGroupContextForGroups(domainGroups);
   if (patchDom) {
     patchOpenTabsDomFromGroups(realTabs, changedGroupKeys);
   } else {
@@ -3366,6 +3537,7 @@ async function renderStaticDashboard() {
 
   renderThemeMenu();
   await renderQuickShortcuts();
+  await loadGroupContextState();
 
   // --- Fetch tabs ---
   await fetchOpenTabs();
@@ -3374,6 +3546,7 @@ async function renderStaticDashboard() {
   await loadGroupOrder();
   await loadGroupLabelOverrides();
   await buildDomainGroups(realTabs);
+  await pruneGroupContextForGroups(domainGroups);
   renderOpenTabsArea(realTabs);
 
   // --- Check for duplicate Tab Harbor tabs ---
@@ -3589,6 +3762,81 @@ document.addEventListener('click', async (e) => {
   }
 
   const card = actionEl.closest('.mission-card');
+
+  if (action === 'open-group-context-editor') {
+    e.preventDefault();
+    const groupKey = actionEl.dataset.groupKey || card?.dataset.groupId || '';
+    if (!groupKey) return;
+    openGroupContextEditor(groupKey);
+    renderOpenTabsArea();
+    requestAnimationFrame(() => {
+      const editor = document.querySelector(`.group-context-editor[data-group-key="${CSS.escape(groupKey)}"]`);
+      editor?.querySelector('[data-group-context-note-input]')?.focus?.({ preventScroll: true });
+    });
+    return;
+  }
+
+  if (action === 'change-group-context-status') {
+    e.preventDefault();
+    const groupKey = actionEl.dataset.groupKey || groupContextEditorState.groupKey || '';
+    if (!groupKey) return;
+    const draft = getGroupContextEditorDraftFromDom();
+    groupContextEditorState = {
+      ...draft,
+      open: true,
+      groupKey,
+      status: actionEl.dataset.contextStatus || '',
+    };
+    renderOpenTabsArea();
+    return;
+  }
+
+  if (action === 'save-group-context') {
+    e.preventDefault();
+    const groupKey = actionEl.dataset.groupKey || groupContextEditorState.groupKey || '';
+    if (!groupKey || !runtimeSaveOpenGroupContext) return;
+    const draft = getGroupContextEditorDraftFromDom();
+    try {
+      groupContextState = await runtimeSaveOpenGroupContext(groupKey, {
+        status: draft.status,
+        note: draft.note,
+      });
+      closeGroupContextEditor();
+      renderOpenTabsArea();
+      showToast(runtimeT ? runtimeT('toastGroupContextSaved') : 'Note saved');
+    } catch (err) {
+      console.warn('[tab-harbor] Could not save group note:', err);
+      showToast(runtimeT ? runtimeT('toastGroupContextSaveFailed') : 'Could not save note');
+    }
+    return;
+  }
+
+  if (action === 'clear-group-context') {
+    e.preventDefault();
+    const groupKey = actionEl.dataset.groupKey || groupContextEditorState.groupKey || '';
+    if (!groupKey) return;
+    try {
+      if (runtimeSaveOpenGroupContext) {
+        groupContextState = await runtimeSaveOpenGroupContext(groupKey, { status: '', note: '' });
+      } else if (runtimeClearOpenGroupContext) {
+        groupContextState = runtimeClearOpenGroupContext(groupContextState, groupKey);
+      }
+      closeGroupContextEditor();
+      renderOpenTabsArea();
+      showToast(runtimeT ? runtimeT('toastGroupContextSaved') : 'Note saved');
+    } catch (err) {
+      console.warn('[tab-harbor] Could not clear group note:', err);
+      showToast(runtimeT ? runtimeT('toastGroupContextSaveFailed') : 'Could not save note');
+    }
+    return;
+  }
+
+  if (action === 'close-group-context-editor') {
+    e.preventDefault();
+    closeGroupContextEditor();
+    renderOpenTabsArea();
+    return;
+  }
 
   if (action === 'save-current-window-session') {
     if (!actionEl.closest('#homePage')) return;
@@ -4029,6 +4277,12 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && groupRenameEditorState) {
     closeGroupRenameEditor();
     void renderDashboard();
+    return;
+  }
+
+  if (e.key === 'Escape' && groupContextEditorState.open) {
+    closeGroupContextEditor();
+    renderOpenTabsArea();
     return;
   }
 

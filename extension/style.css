@@ -1574,6 +1574,154 @@ body.group-dragging .group-nav-button {
   margin-bottom: 8px;
 }
 
+.group-context-wrap {
+  margin: 8px 0 10px;
+}
+
+.group-context-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+  color: color-mix(in srgb, var(--muted) 86%, var(--ink) 14%);
+}
+
+.group-context-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.group-context-status {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-size: var(--ui-font-10);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--workspace-chip-text);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: color-mix(in srgb, var(--workspace-accent-border) 72%, transparent);
+}
+
+.group-context-status-working { color: var(--status-active); }
+.group-context-status-reading { color: var(--accent-slate); }
+.group-context-status-later { color: var(--accent-amber); }
+.group-context-status-done { color: color-mix(in srgb, var(--muted) 80%, var(--ink) 20%); }
+
+.group-context-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-size: var(--ui-font-12);
+  line-height: 1.4;
+}
+
+.group-context-trigger {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 76%, var(--workspace-chip-text) 24%);
+  font: inherit;
+  font-size: 11px;
+  font-size: var(--ui-font-11);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.group-context-trigger:hover,
+.group-context-trigger:focus-visible {
+  color: var(--workspace-chip-text);
+  background: color-mix(in srgb, var(--workspace-chip-bg) 46%, transparent);
+}
+
+.group-context-editor {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--workspace-accent-border) 24%, var(--warm-gray) 76%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card-bg) calc(var(--panel-card-opacity) + 2%), transparent);
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--workspace-accent) 10%, transparent);
+}
+
+.group-context-status-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.group-context-status-option {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--workspace-accent-border) 20%, var(--warm-gray) 80%);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 80%, var(--ink) 20%);
+  font: inherit;
+  font-size: 11px;
+  font-size: var(--ui-font-11);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.group-context-status-option:hover,
+.group-context-status-option:focus-visible,
+.group-context-status-option.is-active {
+  color: var(--workspace-chip-text);
+  border-color: color-mix(in srgb, var(--workspace-accent-border) 58%, var(--warm-gray) 42%);
+  background: color-mix(in srgb, var(--workspace-chip-bg) 58%, transparent);
+}
+
+.group-context-note-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-size: var(--ui-font-11);
+  font-weight: 700;
+}
+
+.group-context-note-input {
+  width: 100%;
+  min-height: 78px;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--workspace-accent-border) 22%, var(--warm-gray) 78%);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-size: var(--ui-font-13);
+  line-height: 1.45;
+}
+
+.group-context-note-input:focus {
+  outline: none;
+  border-color: var(--workspace-accent-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-accent-soft) 62%, transparent);
+}
+
+.group-context-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
 .mission-pages {
   display: flex;
   flex-direction: column;
