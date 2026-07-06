@@ -7,42 +7,55 @@ const assert = require('node:assert/strict');
 let removedTabIds = [];
 let storageData = {};
 
-globalThis.chrome = {
-  runtime: {
-    id: 'test-extension-id',
-    getURL: path => `chrome-extension://test-extension-id/${path}`,
-  },
-  tabs: {
-    query: async () => [],
-    remove: async ids => { removedTabIds = removedTabIds.concat(ids); },
-  },
-  storage: {
-    local: {
-      get: async key => ({ [key]: storageData[key] || {} }),
-    },
-  },
-  action: {
-    setBadgeText: async () => {},
-  },
-  runtime: {
-    id: 'test-extension-id',
-    getURL: path => `chrome-extension://test-extension-id/${path}`,
-    onInstalled: { addListener: () => {} },
-    onStartup: { addListener: () => {} },
-  },
-  tabs: {
-    query: async () => [],
-    remove: async ids => { removedTabIds = removedTabIds.concat(ids); },
-    onCreated: { addListener: () => {} },
-    onRemoved: { addListener: () => {} },
-    onUpdated: { addListener: () => {} },
-  },
-  action: {
-    setBadgeText: async () => {},
-  },
-};
+const backgroundPath = require.resolve('./background.js');
 
-require('./background.js');
+function createChromeMock() {
+  return {
+    runtime: {
+      id: 'test-extension-id',
+      getURL: path => `chrome-extension://test-extension-id/${path}`,
+      onInstalled: { addListener: () => {} },
+      onStartup: { addListener: () => {} },
+    },
+    tabs: {
+      query: async () => [],
+      remove: async ids => { removedTabIds = removedTabIds.concat(ids); },
+      onCreated: { addListener: () => {} },
+      onRemoved: { addListener: () => {} },
+      onUpdated: { addListener: () => {} },
+    },
+    storage: {
+      local: {
+        get: async key => ({ [key]: storageData[key] || {} }),
+      },
+    },
+    action: {
+      setBadgeText: async () => {},
+    },
+  };
+}
+
+function loadBackgroundWithChrome(chromeMock) {
+  delete require.cache[backgroundPath];
+  delete globalThis.TabHarborBackground;
+  globalThis.chrome = chromeMock;
+  require('./background.js');
+}
+
+globalThis.chrome = createChromeMock();
+
+test('background load does not crash when chrome.runtime is unavailable', () => {
+  const chromeMock = createChromeMock();
+  delete chromeMock.runtime;
+  try {
+    assert.doesNotThrow(() => loadBackgroundWithChrome(chromeMock));
+    assert.equal(typeof globalThis.TabHarborBackground.closeDuplicateNewTabs, 'function');
+  } finally {
+    loadBackgroundWithChrome(createChromeMock());
+  }
+});
+
+loadBackgroundWithChrome(createChromeMock());
 
 const { isNewTabBlank, closeDuplicateNewTabs } = globalThis.TabHarborBackground;
 

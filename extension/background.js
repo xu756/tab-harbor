@@ -60,10 +60,16 @@ async function closeDuplicateNewTabs() {
 }
 
 async function updateBadge() {
+  if (typeof chrome === 'undefined' || typeof chrome.action?.setBadgeText !== 'function') return;
+
   try {
     await chrome.action.setBadgeText({ text: '' });
   } catch {
-    chrome.action.setBadgeText({ text: '' });
+    try {
+      chrome.action.setBadgeText({ text: '' });
+    } catch (err) {
+      console.warn('[tab-harbor bg] updateBadge error:', err.message);
+    }
   }
 }
 
@@ -76,6 +82,10 @@ function getTabHarborDashboardUrls() {
 }
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
+
+function canAddChromeListener(event) {
+  return typeof event?.addListener === 'function';
+}
 
 // Notify Tab Harbor pages when tabs change so they can refresh
 async function notifyTabHarborPages(eventMeta = {}) {
@@ -118,33 +128,43 @@ async function notifyTabHarborPages(eventMeta = {}) {
 }
 
 // Update badge when the extension is first installed
-chrome.runtime.onInstalled.addListener(() => {
-  updateBadge();
-});
+if (typeof chrome !== 'undefined' && canAddChromeListener(chrome.runtime?.onInstalled)) {
+  chrome.runtime.onInstalled.addListener(() => {
+    updateBadge();
+  });
+}
 
 // Update badge when Chrome starts up
-chrome.runtime.onStartup.addListener(() => {
-  updateBadge();
-});
+if (typeof chrome !== 'undefined' && canAddChromeListener(chrome.runtime?.onStartup)) {
+  chrome.runtime.onStartup.addListener(() => {
+    updateBadge();
+  });
+}
 
 // Update badge and notify Tab Harbor pages whenever a tab is opened
-chrome.tabs.onCreated.addListener((tab) => {
-  updateBadge();
-  notifyTabHarborPages({ source: 'tabs.onCreated', triggerTabId: tab?.id });
-  closeDuplicateNewTabs();
-});
+if (typeof chrome !== 'undefined' && canAddChromeListener(chrome.tabs?.onCreated)) {
+  chrome.tabs.onCreated.addListener((tab) => {
+    updateBadge();
+    notifyTabHarborPages({ source: 'tabs.onCreated', triggerTabId: tab?.id });
+    closeDuplicateNewTabs();
+  });
+}
 
 // Update badge and notify Tab Harbor pages whenever a tab is closed
-chrome.tabs.onRemoved.addListener((tabId) => {
-  updateBadge();
-  notifyTabHarborPages({ source: 'tabs.onRemoved', triggerTabId: tabId });
-});
+if (typeof chrome !== 'undefined' && canAddChromeListener(chrome.tabs?.onRemoved)) {
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    updateBadge();
+    notifyTabHarborPages({ source: 'tabs.onRemoved', triggerTabId: tabId });
+  });
+}
 
 // Update badge and notify Tab Harbor pages when a tab's URL changes (e.g. navigating to/from chrome://)
-chrome.tabs.onUpdated.addListener((tabId) => {
-  updateBadge();
-  notifyTabHarborPages({ source: 'tabs.onUpdated', triggerTabId: tabId });
-});
+if (typeof chrome !== 'undefined' && canAddChromeListener(chrome.tabs?.onUpdated)) {
+  chrome.tabs.onUpdated.addListener((tabId) => {
+    updateBadge();
+    notifyTabHarborPages({ source: 'tabs.onUpdated', triggerTabId: tabId });
+  });
+}
 
 // ─── Initial run ─────────────────────────────────────────────────────────────
 
