@@ -231,6 +231,7 @@ function detachSavedSessionTabToNewSession({
   const sessionStore = globalScope.TabHarborTabSessions || {};
   const sessionIcons = globalScope.TabOutIconUtils || {};
   const sessionI18n = globalScope.TabHarborI18n || {};
+  const sessionContextApi = globalScope.TabHarborGroupContext || {};
 
   const {
     addSavedTabSession: managerAddSavedTabSession,
@@ -252,11 +253,27 @@ function detachSavedSessionTabToNewSession({
   } = sessionIcons;
 
   const managerT = sessionI18n.t;
+  const {
+    GROUP_CONTEXT_STATUSES: managerGroupContextStatuses = ['working', 'reading', 'later', 'done'],
+    getSavedSessionContext: managerGetSavedSessionContext,
+    loadGroupContextState: managerLoadGroupContextState,
+    normalizeGroupContextState: managerNormalizeGroupContextState,
+    saveSavedSessionContext: managerSetSavedSessionContext,
+  } = sessionContextApi;
   let sessionManagerPage = 'home';
   let savedSessionOrderState = [];
   let savedSessionRenameState = null;
   let savedSessionSettingsState = null;
   let savedSessionCollapsedState = {};
+  let savedSessionContextState = managerNormalizeGroupContextState
+    ? managerNormalizeGroupContextState()
+    : { openGroups: {}, savedSessions: {} };
+  let savedSessionContextEditorState = {
+    open: false,
+    sessionId: '',
+    status: '',
+    note: '',
+  };
   let savedSessionTabSuppressClickUntil = 0;
   let draggedSavedSessionId = '';
   let draggedSavedSessionButtonEl = null;
@@ -336,6 +353,130 @@ function detachSavedSessionTabToNewSession({
 
   function showManagerToast(message) {
     if (typeof showToast === 'function') showToast(message);
+  }
+
+  async function loadSavedSessionContextState() {
+    if (!managerLoadGroupContextState) return savedSessionContextState;
+    savedSessionContextState = await managerLoadGroupContextState();
+    return savedSessionContextState;
+  }
+
+  function getSavedSessionContextForSession(sessionId = '') {
+    if (managerGetSavedSessionContext) {
+      return managerGetSavedSessionContext(savedSessionContextState, sessionId);
+    }
+    return savedSessionContextState?.savedSessions?.[String(sessionId || '')] || null;
+  }
+
+  function getSavedSessionContextStatusLabel(status = '') {
+    const normalized = String(status || '').trim().toLowerCase();
+    const labelKey = {
+      working: 'groupContextStatusWorking',
+      reading: 'groupContextStatusReading',
+      later: 'groupContextStatusLater',
+      done: 'groupContextStatusDone',
+    }[normalized] || 'groupContextStatusNone';
+    const fallback = {
+      working: 'Working',
+      reading: 'Reading',
+      later: 'Later',
+      done: 'Done',
+    }[normalized] || 'No status';
+    return managerT ? managerT(labelKey) : fallback;
+  }
+
+  function isSavedSessionContextEditorOpen(sessionId = '') {
+    return savedSessionContextEditorState.open && savedSessionContextEditorState.sessionId === String(sessionId || '');
+  }
+
+  function getSavedSessionContextEditorDraftFromDom() {
+    if (!savedSessionContextEditorState.open) return savedSessionContextEditorState;
+    const editor = document.querySelector(`.group-context-editor[data-session-id="${CSS.escape(savedSessionContextEditorState.sessionId)}"]`);
+    if (!editor) return savedSessionContextEditorState;
+    const noteInput = editor.querySelector('[data-saved-session-context-note-input]');
+    return {
+      ...savedSessionContextEditorState,
+      note: noteInput ? noteInput.value : savedSessionContextEditorState.note,
+    };
+  }
+
+  function openSavedSessionContextEditor(sessionId = '') {
+    const cleanSessionId = String(sessionId || '');
+    const context = getSavedSessionContextForSession(cleanSessionId);
+    savedSessionContextEditorState = {
+      open: true,
+      sessionId: cleanSessionId,
+      status: context?.status || '',
+      note: context?.note || '',
+    };
+  }
+
+  function closeSavedSessionContextEditor() {
+    savedSessionContextEditorState = {
+      open: false,
+      sessionId: '',
+      status: '',
+      note: '',
+    };
+  }
+
+  function renderSavedSessionContextEditor(sessionId = '') {
+    if (!isSavedSessionContextEditorOpen(sessionId)) return '';
+    const safeSessionId = escapeAttr(sessionId);
+    const currentStatus = String(savedSessionContextEditorState.status || '');
+    const currentNote = String(savedSessionContextEditorState.note || '');
+    const statusControls = ['', ...managerGroupContextStatuses].map(status => {
+      const isActive = status === currentStatus;
+      return `
+        <button class="group-context-status-option${isActive ? ' is-active' : ''}" type="button" data-action="change-saved-session-context-status" data-session-id="${safeSessionId}" data-context-status="${escapeAttr(status)}" aria-pressed="${isActive ? 'true' : 'false'}">
+          ${escapeText(getSavedSessionContextStatusLabel(status))}
+        </button>`;
+    }).join('');
+
+    return `
+      <div class="group-context-editor saved-session-context-editor" role="dialog" aria-label="${managerT ? managerT('groupContextEditorLabel') : 'Group note'}" data-session-id="${safeSessionId}">
+        <div class="group-context-status-options" role="group" aria-label="${managerT ? managerT('groupContextStatusLabel') : 'Status'}">
+          ${statusControls}
+        </div>
+        <label class="group-context-note-field">
+          <span>${managerT ? managerT('groupContextNoteLabel') : 'Group note'}</span>
+          <textarea class="group-context-note-input" data-saved-session-context-note-input rows="3" maxlength="280" placeholder="${managerT ? managerT('groupContextNotePlaceholder') : 'Leave a short note for this group.'}">${escapeText(currentNote)}</textarea>
+        </label>
+        <div class="group-context-editor-actions">
+          <button class="theme-menu-action is-secondary" type="button" data-action="close-saved-session-context-editor" data-session-id="${safeSessionId}">${managerT ? managerT('cancelButton') : 'Cancel'}</button>
+          <button class="theme-menu-action is-secondary" type="button" data-action="clear-saved-session-context" data-session-id="${safeSessionId}">${managerT ? managerT('clearText') : 'Clear'}</button>
+          <button class="theme-menu-action" type="button" data-action="save-saved-session-context" data-session-id="${safeSessionId}">${managerT ? managerT('saveButton') : 'Save'}</button>
+        </div>
+      </div>`;
+  }
+
+  function renderSavedSessionContextRow(session) {
+    const sessionId = String(session?.id || '');
+    const context = getSavedSessionContextForSession(sessionId);
+    const hasContext = Boolean(context?.status || context?.note);
+    const statusHtml = context?.status
+      ? `<span class="group-context-status group-context-status-${escapeAttr(context.status)}">${escapeText(getSavedSessionContextStatusLabel(context.status))}</span>`
+      : '';
+    const noteHtml = context?.note
+      ? `<span class="group-context-note">${escapeText(context.note)}</span>`
+      : '';
+    const actionLabel = hasContext
+      ? (managerT ? managerT('groupContextEditNote') : 'Edit note')
+      : (managerT ? managerT('groupContextAddNote') : 'Add note');
+
+    return `
+      <div class="group-context-wrap saved-session-context-wrap">
+        <div class="group-context-row saved-session-context-row${hasContext ? ' has-context' : ''}">
+          <div class="group-context-main">
+            ${statusHtml}
+            ${noteHtml}
+          </div>
+          <button class="group-context-trigger" type="button" data-action="open-saved-session-context-editor" data-session-id="${escapeAttr(sessionId)}" aria-expanded="${isSavedSessionContextEditorOpen(sessionId) ? 'true' : 'false'}">
+            ${escapeText(actionLabel)}
+          </button>
+        </div>
+        ${renderSavedSessionContextEditor(sessionId)}
+      </div>`;
   }
 
   function getErrorToast() {
@@ -611,6 +752,7 @@ function detachSavedSessionTabToNewSession({
               </button>
             </div>
           </div>
+          ${renderSavedSessionContextRow(session)}
           <div class="saved-session-preview"${expanded ? '' : ' hidden'}>
             ${renderSessionTabPreview(session)}
           </div>
@@ -1143,6 +1285,7 @@ function detachSavedSessionTabToNewSession({
     const countEl = document.getElementById('savedSessionsCount');
     if (!listEl) return;
 
+    await loadSavedSessionContextState();
     const sessions = await getOrderedSavedSessions();
     const runtime = getDashboardRuntime();
     if (typeof runtime.syncWorkspaceTopNavMarkup === 'function') {
@@ -1271,6 +1414,77 @@ function detachSavedSessionTabToNewSession({
       event.preventDefault();
       event.stopPropagation();
       toggleSavedSessionSettings(actionEl.dataset.sessionId || '');
+      return;
+    }
+
+    if (action === 'open-saved-session-context-editor') {
+      event.preventDefault();
+      const sessionId = actionEl.dataset.sessionId || '';
+      if (!sessionId) return;
+      openSavedSessionContextEditor(sessionId);
+      await renderSavedTabsPage();
+      requestAnimationFrame(() => {
+        const editor = document.querySelector(`.group-context-editor[data-session-id="${CSS.escape(sessionId)}"]`);
+        editor?.querySelector('[data-saved-session-context-note-input]')?.focus?.({ preventScroll: true });
+      });
+      return;
+    }
+
+    if (action === 'change-saved-session-context-status') {
+      event.preventDefault();
+      const sessionId = actionEl.dataset.sessionId || savedSessionContextEditorState.sessionId || '';
+      if (!sessionId) return;
+      const draft = getSavedSessionContextEditorDraftFromDom();
+      savedSessionContextEditorState = {
+        ...draft,
+        open: true,
+        sessionId,
+        status: actionEl.dataset.contextStatus || '',
+      };
+      await renderSavedTabsPage();
+      return;
+    }
+
+    if (action === 'save-saved-session-context') {
+      event.preventDefault();
+      const sessionId = actionEl.dataset.sessionId || savedSessionContextEditorState.sessionId || '';
+      if (!sessionId || !managerSetSavedSessionContext) return;
+      const draft = getSavedSessionContextEditorDraftFromDom();
+      try {
+        savedSessionContextState = await managerSetSavedSessionContext(sessionId, {
+          status: draft.status,
+          note: draft.note,
+        });
+        closeSavedSessionContextEditor();
+        await renderSavedTabsPage();
+        showManagerToast(managerT ? managerT('toastGroupContextSaved') : 'Note saved');
+      } catch (err) {
+        console.warn('[tab-harbor] Could not save saved-session note:', err);
+        showManagerToast(managerT ? managerT('toastGroupContextSaveFailed') : 'Could not save note');
+      }
+      return;
+    }
+
+    if (action === 'clear-saved-session-context') {
+      event.preventDefault();
+      const sessionId = actionEl.dataset.sessionId || savedSessionContextEditorState.sessionId || '';
+      if (!sessionId || !managerSetSavedSessionContext) return;
+      try {
+        savedSessionContextState = await managerSetSavedSessionContext(sessionId, { status: '', note: '' });
+        closeSavedSessionContextEditor();
+        await renderSavedTabsPage();
+        showManagerToast(managerT ? managerT('toastGroupContextSaved') : 'Note saved');
+      } catch (err) {
+        console.warn('[tab-harbor] Could not clear saved-session note:', err);
+        showManagerToast(managerT ? managerT('toastGroupContextSaveFailed') : 'Could not save note');
+      }
+      return;
+    }
+
+    if (action === 'close-saved-session-context-editor') {
+      event.preventDefault();
+      closeSavedSessionContextEditor();
+      await renderSavedTabsPage();
       return;
     }
 
@@ -1476,13 +1690,18 @@ function detachSavedSessionTabToNewSession({
     void persistSavedSessionRestoreMode(selectEl.value);
   });
 
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && savedSessionSettingsState) {
-      closeSavedSessionSettings();
-      void renderSavedTabsPage();
-      return;
-    }
-    const inputEl = event.target.closest('.saved-session-rename-input');
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && savedSessionSettingsState) {
+        closeSavedSessionSettings();
+        void renderSavedTabsPage();
+        return;
+      }
+      if (event.key === 'Escape' && savedSessionContextEditorState.open) {
+        closeSavedSessionContextEditor();
+        void renderSavedTabsPage();
+        return;
+      }
+      const inputEl = event.target.closest('.saved-session-rename-input');
     if (!inputEl || !savedSessionRenameState) return;
     if (event.key === 'Enter') {
       event.preventDefault();

@@ -1722,6 +1722,10 @@ body.group-dragging .group-nav-button {
   flex-wrap: wrap;
 }
 
+.saved-session-context-row {
+  margin-top: 2px;
+}
+
 .mission-pages {
   display: flex;
   flex-direction: column;

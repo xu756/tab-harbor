@@ -205,6 +205,19 @@ test('saved tabs top nav supports session reordering and card jump highlighting'
   assert.match(css, /\.saved-session-nav-button\.is-name-mode/);
 });
 
+test('saved session cards expose quiet context note controls', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(sessionManagerJs, /TabHarborGroupContext/);
+  assert.match(sessionManagerJs, /let savedSessionContextState =/);
+  assert.match(sessionManagerJs, /function renderSavedSessionContextRow\(session/);
+  assert.match(sessionManagerJs, /class="group-context-row saved-session-context-row/);
+  assert.match(sessionManagerJs, /data-action="open-saved-session-context-editor"/);
+  assert.match(sessionManagerJs, /data-action="save-saved-session-context"/);
+  assert.match(sessionManagerJs, /data-action="clear-saved-session-context"/);
+  assert.match(css, /\.saved-session-context-row/);
+});
+
 test('tab sessions close selected tabs by id after storage save instead of fuzzy url matching', () => {
   assert.match(tabSessionsJs, /const SAVED_TAB_SESSIONS_KEY = 'savedTabSessions'/);
   assert.match(runtimeJs, /await saveTabsAsSession\(/);
