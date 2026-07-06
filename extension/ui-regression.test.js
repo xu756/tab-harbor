@@ -413,12 +413,12 @@ test('root manifest mirrors the Edge unpacked entry points', () => {
   assert.match(manifest, /"default_popup": "extension\/popup\/popup\.html"/);
 });
 
-test('footer credits point to the repo and OO GitHub profile', () => {
+test('footer credits point to the repo and publisher GitHub profile', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
   assert.match(
     html,
-    /class="footer-credit"[\s\S]*href="https:\/\/github\.com\/V-IOLE-T\/tab-harbor"[\s\S]*>Tab Harbor<\/a> by <a class="footer-credit-link" href="https:\/\/github\.com\/V-IOLE-T"[\s\S]*>OO<\/a>/
+    /class="footer-credit"[\s\S]*href="https:\/\/github\.com\/xu756\/tab-harbor"[\s\S]*>Tab Harbor<\/a> by <a class="footer-credit-link" href="https:\/\/github\.com\/xu756"[\s\S]*>xu756<\/a>/
   );
   assert.match(css, /\.footer-credit-link\s*\{/);
   assert.match(css, /\.footer-credit-link:hover,\s*\.footer-credit-link:focus-visible\s*\{/);

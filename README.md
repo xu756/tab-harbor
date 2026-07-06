@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-**A calmer Chrome new tab dashboard for open tabs, quick links, saved sessions, and lightweight todos.**
+**A quiet Chrome new tab workspace for tabs, quick links, desk notes, saved sessions, and lightweight todos.**
 
 Tab Harbor turns Chrome's new tab page into a place where you can keep working. You immediately see what is already open, what should be saved for later, and what still needs your attention.
 
@@ -78,21 +78,16 @@ That also means it is intentionally lightweight. There is no backend, no sync ac
 
 ### Install from the Chrome Web Store
 
-1. Open Tab Harbor in the Chrome Web Store:
+The Chrome Web Store listing will be added here after review.
 
-   [Open Tab Harbor in the Chrome Web Store](https://chromewebstore.google.com/detail/tab-harbor/bkjihmeifgjifhkleokclpobdfnhiodf?authuser=0&hl=zh-CN)
-
-2. Install it from the store.
-3. Open a new tab in Chrome.
-
-Due to package review, the actual version may appear a little later.
+After installing it from the store, open a new tab in Chrome.
 
 ### Install with a coding agent
 
 1. Give your coding agent this repo:
 
    ```text
-   https://github.com/V-IOLE-T/tab-harbor
+   https://github.com/xu756/tab-harbor
    ```
 
 2. Ask it to install the extension.
@@ -103,7 +98,7 @@ Due to package review, the actual version may appear a little later.
 1. Clone this repo:
 
    ```bash
-   git clone https://github.com/V-IOLE-T/tab-harbor.git
+   git clone https://github.com/xu756/tab-harbor.git
    ```
 
 2. Open `chrome://extensions`

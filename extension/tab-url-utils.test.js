@@ -10,13 +10,13 @@ const {
 } = require('./tab-url-utils.js');
 
 test('parseSuspendedTabUrl extracts original uri and title from Marvellous Suspender URLs', () => {
-  const suspendedUrl = 'extension://noogafoofpebimajpfpamcfhoaifemoa/suspended.html#ttl=V-IOLE-T%2Ftab-harbor&pos=0&uri=https%3A%2F%2Fgithub.com%2FV-IOLE-T%2Ftab-harbor';
+  const suspendedUrl = 'extension://noogafoofpebimajpfpamcfhoaifemoa/suspended.html#ttl=xu756%2Ftab-harbor&pos=0&uri=https%3A%2F%2Fgithub.com%2Fxu756%2Ftab-harbor';
 
   const parsed = parseSuspendedTabUrl(suspendedUrl);
 
   assert.equal(parsed.isSuspended, true);
-  assert.equal(parsed.originalUrl, 'https://github.com/V-IOLE-T/tab-harbor');
-  assert.equal(parsed.title, 'V-IOLE-T/tab-harbor');
+  assert.equal(parsed.originalUrl, 'https://github.com/xu756/tab-harbor');
+  assert.equal(parsed.title, 'xu756/tab-harbor');
 });
 
 test('getCanonicalTabUrl leaves ordinary urls alone and unwraps suspended urls', () => {

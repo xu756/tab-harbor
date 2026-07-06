@@ -18,7 +18,7 @@ test('buildSessionSnapshot captures selected tabs with canonical urls and manual
     tabs: [
       {
         id: 11,
-        url: 'extension://noogafoofpebimajpfpamcfhoaifemoa/suspended.html#ttl=Issue%20Thread&uri=https%3A%2F%2Fgithub.com%2FV-IOLE-T%2Ftab-harbor%2Fissues%2F25',
+        url: 'extension://noogafoofpebimajpfpamcfhoaifemoa/suspended.html#ttl=Issue%20Thread&uri=https%3A%2F%2Fgithub.com%2Fxu756%2Ftab-harbor%2Fissues%2F25',
         title: 'Suspended tab',
         favIconUrl: 'https://github.com/favicon.ico',
         windowId: 1,
@@ -39,10 +39,10 @@ test('buildSessionSnapshot captures selected tabs with canonical urls and manual
   });
 
   assert.equal(snapshot.tabs.length, 1);
-  assert.equal(snapshot.tabs[0].url, 'https://github.com/V-IOLE-T/tab-harbor/issues/25');
+  assert.equal(snapshot.tabs[0].url, 'https://github.com/xu756/tab-harbor/issues/25');
   assert.equal(snapshot.tabs[0].title, 'Issue Thread');
   assert.deepEqual(snapshot.groups, [
-    { key: '__session_group__:research', label: 'Research', manualGroupId: 'research', tabUrls: ['https://github.com/V-IOLE-T/tab-harbor/issues/25'] },
+    { key: '__session_group__:research', label: 'Research', manualGroupId: 'research', tabUrls: ['https://github.com/xu756/tab-harbor/issues/25'] },
   ]);
 });
 
