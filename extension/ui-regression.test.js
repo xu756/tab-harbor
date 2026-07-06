@@ -15,6 +15,9 @@ const helperJs = fs.readFileSync(path.join(__dirname, 'ui-helpers.js'), 'utf8');
 const tabSessionsJs = fs.existsSync(path.join(__dirname, 'tab-sessions.js'))
   ? fs.readFileSync(path.join(__dirname, 'tab-sessions.js'), 'utf8')
   : '';
+const groupContextJs = fs.existsSync(path.join(__dirname, 'group-context.js'))
+  ? fs.readFileSync(path.join(__dirname, 'group-context.js'), 'utf8')
+  : '';
 const sessionManagerJs = fs.existsSync(path.join(__dirname, 'session-manager.js'))
   ? fs.readFileSync(path.join(__dirname, 'session-manager.js'), 'utf8')
   : '';
@@ -22,7 +25,7 @@ const popupJs = fs.readFileSync(path.join(__dirname, 'popup', 'popup.js'), 'utf8
 const popupHtml = fs.readFileSync(path.join(__dirname, 'popup', 'popup.html'), 'utf8');
 const configJs = fs.readFileSync(path.join(__dirname, 'config.js'), 'utf8');
 const configLoaderJs = fs.readFileSync(path.join(__dirname, 'config-loader.js'), 'utf8');
-const appJs = [appEntryJs, runtimeJs, themeJs, drawerJs, helperJs].join('\n');
+const appJs = [appEntryJs, runtimeJs, themeJs, drawerJs, helperJs, groupContextJs].join('\n');
 
 test('saved tabs page scripts load before dashboard runtime and expose a top page selector', () => {
   assert.match(html, /id="workspaceTopNav"/);
@@ -39,7 +42,9 @@ test('saved tabs page scripts load before dashboard runtime and expose a top pag
   assert.match(sessionManagerJs, /renderSavedTabsNavArea/);
   assert.match(sessionManagerJs, /saved-session-nav-button/);
   assert.match(sessionManagerJs, /managerGetGroupIcon/);
-  assert.match(html, /<script src="tab-url-utils\.js"><\/script>[\s\S]*<script src="tab-sessions\.js"><\/script>[\s\S]*<script src="session-manager\.js"><\/script>[\s\S]*<script src="dashboard-runtime\.js"><\/script>/);
+  assert.match(html, /<script src="tab-url-utils\.js"><\/script>[\s\S]*<script src="tab-sessions\.js"><\/script>[\s\S]*<script src="group-context\.js"><\/script>[\s\S]*<script src="session-manager\.js"><\/script>[\s\S]*<script src="dashboard-runtime\.js"><\/script>/);
+  assert.match(groupContextJs, /globalThis\.TabHarborGroupContext|globalScope\.TabHarborGroupContext/);
+  assert.match(groupContextJs, /GROUP_CONTEXT_KEY = 'groupContextNotes'/);
 });
 
 test('workspace top selector stays mounted when open tabs become empty', () => {
