@@ -90,17 +90,30 @@ test('saved tabs page keeps session management while home owns session save acti
 });
 
 test('saved-session picker scopes visible tabs to the selected entry point', () => {
-  assert.match(runtimeJs, /async function openTabSessionPicker\(\{\s*source = 'current-window',\s*initialTabIds = null,\s*scopeTabIds = null,\s*\} = \{\}\)/);
+  assert.match(runtimeJs, /async function openTabSessionPicker\(\{\s*source = 'current-window',\s*sourceGroupKey = '',\s*initialTabIds = null,\s*scopeTabIds = null,\s*\} = \{\}\)/);
   assert.match(runtimeJs, /const scopedGroups = getScopedTabSessionPickerGroups\(context\.groups, scopeTabIds\);/);
   assert.match(runtimeJs, /const allIds = getTabSessionPickerAllIds\(scopedGroups\);/);
   assert.match(runtimeJs, /groups: scopedGroups,/);
   assert.match(runtimeJs, /const newSessionName = String\(tabSessionPickerState\.newSessionName \|\| ''\)\.trim\(\);/);
-  assert.match(runtimeJs, /saveSelectedTabSession\(\s*selectedIds,\s*tabSessionPickerState\.source \|\| 'selected',\s*newSessionName\s*\)/);
+  assert.match(runtimeJs, /const source = tabSessionPickerState\.source \|\| 'selected';\s*const sourceGroupKey = tabSessionPickerState\.sourceGroupKey \|\| '';/);
+  assert.match(runtimeJs, /saveSelectedTabSession\(\s*selectedIds,\s*source,\s*newSessionName,\s*\{ sourceGroupKey \}\s*\)/);
   assert.match(runtimeJs, /if \(action === 'save-current-window-session'\) \{[\s\S]{0,280}openTabSessionPicker\(\{ source: 'current-window' \}\)/);
   assert.match(runtimeJs, /if \(action === 'save-single-tab-session'\) \{[\s\S]{0,360}openTabSessionPicker\(\{\s*source: 'single-tab',\s*initialTabIds: \[tabId\],\s*scopeTabIds: \[tabId\],\s*\}\)/);
-  assert.match(runtimeJs, /if \(action === 'save-domain-session'\) \{[\s\S]{0,720}openTabSessionPicker\(\{\s*source: 'group',\s*initialTabIds: tabIds,\s*scopeTabIds: tabIds,\s*\}\)/);
+  assert.match(runtimeJs, /if \(action === 'save-domain-session'\) \{[\s\S]{0,760}openTabSessionPicker\(\{\s*source: 'group',\s*initialTabIds: tabIds,\s*scopeTabIds: tabIds,\s*sourceGroupKey: group\.domain,\s*\}\)/);
   assert.doesNotMatch(runtimeJs, /saveSelectedTabSession\(\[tabId\], 'single-tab'\)/);
   assert.doesNotMatch(runtimeJs, /saveSelectedTabSession\(tabIds, 'group'\)/);
+});
+
+test('group session saves carry one clear group context into the saved session', () => {
+  assert.match(runtimeJs, /copyOpenGroupContextToSavedSession: runtimeCopyOpenGroupContextToSavedSession/);
+  assert.match(runtimeJs, /sourceGroupKey: ''/);
+  assert.match(runtimeJs, /sourceGroupKey = '',/);
+  assert.match(runtimeJs, /sourceGroupKey,/);
+  assert.match(runtimeJs, /const sourceGroupKey = tabSessionPickerState\.sourceGroupKey \|\| '';/);
+  assert.match(runtimeJs, /saveSelectedTabSession\(\s*selectedIds,\s*source,\s*newSessionName,\s*\{ sourceGroupKey \}\s*\)/);
+  assert.match(runtimeJs, /saveTabsAsSession\(selectedTabs, tabIds, source, name, \{ sourceGroupKey \}\)/);
+  assert.match(runtimeJs, /runtimeCopyOpenGroupContextToSavedSession\(sourceGroupKey, snapshot\.id\)/);
+  assert.match(runtimeJs, /openTabSessionPicker\(\{\s*source: 'group',\s*initialTabIds: tabIds,\s*scopeTabIds: tabIds,\s*sourceGroupKey: group\.domain,/);
 });
 
 test('home and saved section headers share a fixed title column and top nav stays single-row', () => {

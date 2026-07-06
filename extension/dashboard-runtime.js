@@ -101,6 +101,7 @@ const {
 const {
   GROUP_CONTEXT_STATUSES: runtimeGroupContextStatuses = ['working', 'reading', 'later', 'done'],
   clearOpenGroupContext: runtimeClearOpenGroupContext,
+  copyOpenGroupContextToSavedSession: runtimeCopyOpenGroupContextToSavedSession,
   getOpenGroupContext: runtimeGetOpenGroupContext,
   loadGroupContextState: runtimeLoadGroupContextState,
   normalizeGroupContextState: runtimeNormalizeGroupContextState,
@@ -158,6 +159,7 @@ let tabSessionPickerState = {
   open: false,
   mode: 'new',
   source: 'current-window',
+  sourceGroupKey: '',
   selectedTabIds: [],
   newSessionName: '',
   targetSessionId: '',
@@ -1180,7 +1182,7 @@ async function refreshTabSessionModel() {
   return realTabs;
 }
 
-async function saveTabsAsSession(tabs, selectedTabIds, source = 'manual', name = '') {
+async function saveTabsAsSession(tabs, selectedTabIds, source = 'manual', name = '', { sourceGroupKey = '' } = {}) {
   if (!runtimeBuildSessionSnapshot || !runtimeAddSavedTabSession) {
     throw new Error('Session storage is unavailable');
   }
@@ -1196,6 +1198,9 @@ async function saveTabsAsSession(tabs, selectedTabIds, source = 'manual', name =
   });
 
   const savedSessions = await runtimeAddSavedTabSession(snapshot);
+  if (sourceGroupKey && runtimeCopyOpenGroupContextToSavedSession) {
+    groupContextState = await runtimeCopyOpenGroupContextToSavedSession(sourceGroupKey, snapshot.id);
+  }
   const tabIdsToClose = (Array.isArray(tabs) ? tabs : [])
     .filter(tab => selectedIds.has(String(tab?.id)) && (runtimeIsRestorableTabUrl ? runtimeIsRestorableTabUrl(tab?.url || '') : true))
     .map(tab => getTabIdValue(tab?.id))
@@ -1226,10 +1231,10 @@ async function saveCurrentWindowTabSession() {
   return result;
 }
 
-async function saveSelectedTabSession(tabIds = [], source = 'selected', name = '') {
+async function saveSelectedTabSession(tabIds = [], source = 'selected', name = '', { sourceGroupKey = '' } = {}) {
   const realTabs = await refreshTabSessionModel();
   const selectedTabs = getTabsByIds(tabIds, realTabs);
-  const result = await saveTabsAsSession(selectedTabs, tabIds, source, name);
+  const result = await saveTabsAsSession(selectedTabs, tabIds, source, name, { sourceGroupKey });
   return result;
 }
 
@@ -1363,6 +1368,7 @@ function getSavedSessionOptionLabel(session = {}) {
 
 async function openTabSessionPicker({
   source = 'current-window',
+  sourceGroupKey = '',
   initialTabIds = null,
   scopeTabIds = null,
 } = {}) {
@@ -1378,6 +1384,7 @@ async function openTabSessionPicker({
     open: true,
     mode: tabSessionPickerState.mode === 'existing' && savedSessions.length ? 'existing' : 'new',
     source,
+    sourceGroupKey: String(sourceGroupKey || ''),
     selectedTabIds: initialSelectedIds,
     newSessionName: tabSessionPickerState.newSessionName || '',
     targetSessionId: tabSessionPickerState.targetSessionId || String(savedSessions[0]?.id || ''),
@@ -1393,6 +1400,7 @@ function closeTabSessionPicker() {
     open: false,
     mode: 'new',
     source: 'current-window',
+    sourceGroupKey: '',
     selectedTabIds: [],
     newSessionName: '',
     targetSessionId: '',
@@ -1527,6 +1535,7 @@ async function submitTabSessionPicker() {
         ...tabSessionPickerState,
         open: false,
         newSessionName: '',
+        sourceGroupKey: '',
       };
       await renderDashboard();
       const skipped = result?.skippedDuplicateCount || 0;
@@ -1537,15 +1546,19 @@ async function submitTabSessionPicker() {
     }
 
     const newSessionName = String(tabSessionPickerState.newSessionName || '').trim();
+    const source = tabSessionPickerState.source || 'selected';
+    const sourceGroupKey = tabSessionPickerState.sourceGroupKey || '';
     tabSessionPickerState = {
       ...tabSessionPickerState,
       open: false,
       newSessionName: '',
+      sourceGroupKey: '',
     };
     const result = await saveSelectedTabSession(
       selectedIds,
-      tabSessionPickerState.source || 'selected',
-      newSessionName
+      source,
+      newSessionName,
+      { sourceGroupKey }
     );
     showToast(runtimeT
       ? runtimeT('toastSessionSaved', { count: result?.session?.tabs?.length || 0 })
@@ -4116,6 +4129,7 @@ document.addEventListener('click', async (e) => {
       source: 'group',
       initialTabIds: tabIds,
       scopeTabIds: tabIds,
+      sourceGroupKey: group.domain,
     });
     return;
   }
