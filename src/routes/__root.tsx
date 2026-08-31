@@ -5,6 +5,7 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
 import appCss from '../styles/app.css?url'
 import type { RouterContext } from '../router'
 
@@ -35,7 +36,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN">
       <head>
