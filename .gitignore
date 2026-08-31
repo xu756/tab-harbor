@@ -1,8 +1,12 @@
-extension/config.local.js
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
 .DS_Store
-extension.zip
-dist/*.zip
-.idea
-.vscode
+.idea/
+.vscode/
+*.zip
+src/routeTree.gen.ts
 CLAUDE.local.md
 CLAUDE.md
