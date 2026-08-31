@@ -61,27 +61,44 @@ export async function queryLiveTabs(): Promise<BrowserTab[]> {
 export function subscribeToTabChanges(onChange: () => void) {
   if (!hasChromeRuntime()) return () => undefined
 
-  const listeners: Array<[chrome.events.Event<(...args: never[]) => void>, (...args: never[]) => void]> = []
-  const bind = (event: chrome.events.Event<(...args: never[]) => void> | undefined) => {
-    if (!event?.addListener) return
-    const listener = (() => onChange()) as (...args: never[]) => void
-    event.addListener(listener)
-    listeners.push([event, listener])
-  }
+  const onCreated = () => onChange()
+  const onRemoved = () => onChange()
+  const onUpdated = () => onChange()
+  const onMoved = () => onChange()
+  const onAttached = () => onChange()
+  const onDetached = () => onChange()
+  const onReplaced = () => onChange()
+  const onGroupCreated = () => onChange()
+  const onGroupUpdated = () => onChange()
+  const onGroupRemoved = () => onChange()
+  const onGroupMoved = () => onChange()
 
-  bind(chrome.tabs.onCreated as never)
-  bind(chrome.tabs.onRemoved as never)
-  bind(chrome.tabs.onUpdated as never)
-  bind(chrome.tabs.onMoved as never)
-  bind(chrome.tabs.onAttached as never)
-  bind(chrome.tabs.onDetached as never)
-  bind(chrome.tabGroups?.onCreated as never)
-  bind(chrome.tabGroups?.onUpdated as never)
-  bind(chrome.tabGroups?.onRemoved as never)
-  bind(chrome.tabGroups?.onMoved as never)
+  chrome.tabs.onCreated.addListener(onCreated)
+  chrome.tabs.onRemoved.addListener(onRemoved)
+  chrome.tabs.onUpdated.addListener(onUpdated)
+  chrome.tabs.onMoved.addListener(onMoved)
+  chrome.tabs.onAttached.addListener(onAttached)
+  chrome.tabs.onDetached.addListener(onDetached)
+  chrome.tabs.onReplaced.addListener(onReplaced)
+
+  chrome.tabGroups.onCreated.addListener(onGroupCreated)
+  chrome.tabGroups.onUpdated.addListener(onGroupUpdated)
+  chrome.tabGroups.onRemoved.addListener(onGroupRemoved)
+  chrome.tabGroups.onMoved.addListener(onGroupMoved)
 
   return () => {
-    for (const [event, listener] of listeners) event.removeListener(listener)
+    chrome.tabs.onCreated.removeListener(onCreated)
+    chrome.tabs.onRemoved.removeListener(onRemoved)
+    chrome.tabs.onUpdated.removeListener(onUpdated)
+    chrome.tabs.onMoved.removeListener(onMoved)
+    chrome.tabs.onAttached.removeListener(onAttached)
+    chrome.tabs.onDetached.removeListener(onDetached)
+    chrome.tabs.onReplaced.removeListener(onReplaced)
+
+    chrome.tabGroups.onCreated.removeListener(onGroupCreated)
+    chrome.tabGroups.onUpdated.removeListener(onGroupUpdated)
+    chrome.tabGroups.onRemoved.removeListener(onGroupRemoved)
+    chrome.tabGroups.onMoved.removeListener(onGroupMoved)
   }
 }
 

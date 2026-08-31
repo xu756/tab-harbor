@@ -1,127 +1,83 @@
 # Tab Harbor
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+Tab Harbor is a calm, local-first Chrome workspace for managing live tabs and turning temporary browsing state into reusable workspaces.
 
-**A quiet Chrome new tab workspace for tabs, quick links, desk notes, saved sessions, and lightweight todos.**
+The v2 rewrite is built with the TanStack ecosystem instead of the previous plain HTML/CSS/script architecture.
 
-Tab Harbor turns Chrome's new tab page into a place where you can keep working. You immediately see what is already open, what should be saved for later, and what still needs your attention.
+## Product model
 
-<p align="center">
-  <img src="assets/readme/feature-tabs.png" alt="Tab Harbor overview" width="760">
-</p>
+- **Live Tabs** are the tabs that currently exist in Chrome.
+- **Workspaces** are durable local collections of URLs that can be restored later.
+- **Devices** is currently a product shell only; authentication and cloud synchronization are intentionally not connected yet.
+- The new-tab page is the primary workspace. The Chrome side panel is a secondary quick-access surface.
 
-## ✨ Core Highlights
+## Stack
 
-- **Tabs are automatically organized by domain.** Tab Harbor groups open pages by domain, and moves homepage-style tabs into a dedicated `Homepages` group, so you can quickly see what you are actually working on.
-- **You can still organize things around your own workflow.** When domain-based grouping is not enough, you can create manual groups, keep common quick links around, and jump back to the right section from the top icon rail.
-- **Saved tabs now behave more like sessions.** You can choose what to save, add tabs to an existing saved session, restore them later, and keep the overview tidy with collapsed session groups when you do not need every tab in front of you.
-- **Todos stay close, but out of the way.** The drawer lets you create, edit, delete, search, and archive todos without leaving the page.
-- **It keeps getting calmer without getting heavier.** You can switch themes, tune transparency, adjust text and shortcut size, set a custom background, sleep inactive tabs, and clean duplicate tabs with one click, while everything still stays in `chrome.storage.local` with no backend or account.
+- TanStack Start in SPA mode
+- TanStack Router
+- TanStack Query
+- TanStack Store
+- TanStack Virtual
+- TanStack Form
+- React 19 + TypeScript
+- Vite + Bun
+- Chrome Manifest V3
 
-## 🖼️ Feature Tour
+## Current v2 features
 
-<table>
-  <tr>
-    <td width="33.33%" valign="top">
-      <strong>Unified tab management</strong><br><br>
-      <img src="assets/readme/feature-tabs.png" alt="Tabs" width="100%">
-    </td>
-    <td width="33.33%" valign="top">
-      <strong>Saved sessions</strong><br><br>
-      <img src="assets/readme/feature-saved-drawer.png" alt="Saved sessions drawer" width="100%">
-    </td>
-    <td width="33.33%" valign="top">
-      <strong>Todos and quick jumping</strong><br><br>
-      <img src="assets/readme/feature-todos.png" alt="Todos" width="100%">
-    </td>
-  </tr>
-</table>
+- Read all normal Chrome tabs and native tab groups
+- Domain fallback grouping for ungrouped tabs
+- Compact high-density tab list
+- Search by title or URL
+- Activate and close tabs
+- Multi-select tabs and batch close/save
+- Duplicate URL detection
+- Save all, a group, or selected tabs as a local workspace
+- Restore a workspace into a new Chrome window
+- Delete local workspaces
+- `Ctrl/Cmd + K` command palette
+- Light / dark / system themes
+- Side-panel entry from the extension action
+- Browser-preview demo data when running outside Chrome extension runtime
+- Static Devices/Login UI reserved for the future backend phase
 
-### Unified tab management
+## Local data
 
-Tab Harbor organizes tabs more like a workspace: **domain-based groups, manual groups, quick access links, and fast jumping from the top icon rail**. If you want to clean up the browser a bit more, you can **also remove duplicate tabs with one click**.
+Workspaces are stored with `chrome.storage.local`. Development preview falls back to `localStorage`.
 
-### Saved sessions
+Tab IDs, window IDs, and Chrome group IDs are runtime-only identifiers and are not used as durable workspace IDs. Incognito tabs are excluded from the local workspace model by default.
 
-Pages you do not need right now can be **saved as sessions, added to an existing session, restored later, or kept collapsed for a quieter overview**.
+## Development
 
-### Todos and quick jumping
+```bash
+bun install
+bun run dev
+```
 
-Tab Harbor also works as a tiny action layer: jot down todos, keep short descriptions, archive completed items, and jump back into the right group from the same page.
+The development server uses demo tab data when Chrome extension APIs are unavailable.
 
-### Theme switching
+## Build the extension
 
-When you want the page to feel more like your own workspace, you can **switch themes, tune transparency, adjust text and shortcut size, and use a custom background image**.
+```bash
+bun install
+bun run typecheck
+bun run build
+```
 
-<table>
-  <tr>
-    <td><img src="assets/readme/theme-warm-neutral.png" alt="warm neutral" width="100%"></td>
-    <td><img src="assets/readme/theme-soft-green.png" alt="soft green" width="100%"></td>
-  </tr>
-  <tr>
-    <td><img src="assets/readme/theme-soft-clay.png" alt="soft clay" width="100%"></td>
-    <td><img src="assets/readme/theme-custom-background.png" alt="custom background" width="100%"></td>
-  </tr>
-</table>
+Load the generated `dist/client` directory from `chrome://extensions` using **Load unpacked**.
 
-### Manual sleep control
+Verify at minimum:
 
-When you want to slow a tab down without losing it, you can **sleep individual tabs or put an entire group to sleep from the workspace itself**.
+1. Opening a new tab renders Tab Harbor.
+2. The toolbar action opens the side panel.
+3. Real tabs and native tab groups are visible.
+4. Saving and restoring a workspace works after browser reload.
+5. No inline-script CSP errors are reported by Chrome.
 
-## 🌊 Why It Feels Different
+## Backend status
 
-Most new tab pages try to be a search box, a wallpaper, or a speed dial. Tab Harbor is closer to a lightweight browser control room. It keeps the messy reality of browsing visible, but turns it into something calmer and more actionable.
+There is no backend integration in this branch. Login, device sessions, cloud sync, Send to Device, inbox, and conflict resolution are intentionally left for the next phase.
 
-That also means it is intentionally lightweight. There is no backend, no sync account, and no extra app to open. It lives exactly where the browsing chaos already happens.
+## Repository
 
-## ⚡ Quick Use
-
-### Install from the Chrome Web Store
-
-The Chrome Web Store listing will be added here after review.
-
-After installing it from the store, open a new tab in Chrome.
-
-### Install with a coding agent
-
-1. Give your coding agent this repo:
-
-   ```text
-   https://github.com/xu756/tab-harbor
-   ```
-
-2. Ask it to install the extension.
-3. Open a new tab in Chrome.
-
-### Install manually
-
-1. Clone this repo:
-
-   ```bash
-   git clone https://github.com/xu756/tab-harbor.git
-   ```
-
-2. Open `chrome://extensions`
-3. Turn on **Developer mode**
-4. Click **Load unpacked**
-5. Select the [`extension/`](extension/) folder in Chrome, or the repo root in Edge
-6. Open a new tab
-
-## 🔒 Fully Local
-
-Tab Harbor runs entirely inside the extension. Open tabs come directly from Chrome, and saved sessions, todos, quick links, theme preferences, and layout state stay on your machine through `chrome.storage.local`.
-
-If you publish this repo for other people, they get the code and assets, not your personal browsing data.
-
-## 🛠️ Under the Hood
-
-This is a Manifest V3 Chrome extension with a plain frontend stack and no build step required to use it. You can clone it, load it, and start using it without npm, without a dev server, and without standing up anything else.
-
-## 🙏 Acknowledgements
-
-- Tab Harbor is built on top of Zara's open-source project [tab-out](https://github.com/zarazhangrui/tab-out), which is the upstream repository and the starting point for this project.
-- Thanks as well to the [Linux.do community](https://linux.do) for the ideas, feedback, and the kind of maker energy that helps projects like this keep evolving.
-
-## 📄 License
-
-MIT License
+The active rewrite branch is `refactor/tanstack-start` until the v2 implementation is validated and merged.
