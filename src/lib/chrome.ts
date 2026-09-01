@@ -89,43 +89,70 @@ export async function queryBookmarks(): Promise<BrowserBookmark[]> {
 export function subscribeToTabChanges(onChange: () => void) {
   if (!hasChromeRuntime()) return () => undefined
 
-  const listeners: Array<[chrome.events.Event<(...args: any[]) => void>, (...args: any[]) => void]> = []
-  const add = (event: chrome.events.Event<(...args: any[]) => void> | undefined) => {
-    if (!event?.addListener) return
-    const listener = () => onChange()
-    event.addListener(listener)
-    listeners.push([event, listener])
+  const onCreated = () => onChange()
+  const onRemoved = () => onChange()
+  const onUpdated = () => onChange()
+  const onMoved = () => onChange()
+  const onAttached = () => onChange()
+  const onDetached = () => onChange()
+  const onReplaced = () => onChange()
+  const onGroupCreated = () => onChange()
+  const onGroupUpdated = () => onChange()
+  const onGroupRemoved = () => onChange()
+  const onGroupMoved = () => onChange()
+
+  chrome.tabs.onCreated.addListener(onCreated)
+  chrome.tabs.onRemoved.addListener(onRemoved)
+  chrome.tabs.onUpdated.addListener(onUpdated)
+  chrome.tabs.onMoved.addListener(onMoved)
+  chrome.tabs.onAttached.addListener(onAttached)
+  chrome.tabs.onDetached.addListener(onDetached)
+  chrome.tabs.onReplaced.addListener(onReplaced)
+  chrome.tabGroups.onCreated.addListener(onGroupCreated)
+  chrome.tabGroups.onUpdated.addListener(onGroupUpdated)
+  chrome.tabGroups.onRemoved.addListener(onGroupRemoved)
+  chrome.tabGroups.onMoved.addListener(onGroupMoved)
+
+  return () => {
+    chrome.tabs.onCreated.removeListener(onCreated)
+    chrome.tabs.onRemoved.removeListener(onRemoved)
+    chrome.tabs.onUpdated.removeListener(onUpdated)
+    chrome.tabs.onMoved.removeListener(onMoved)
+    chrome.tabs.onAttached.removeListener(onAttached)
+    chrome.tabs.onDetached.removeListener(onDetached)
+    chrome.tabs.onReplaced.removeListener(onReplaced)
+    chrome.tabGroups.onCreated.removeListener(onGroupCreated)
+    chrome.tabGroups.onUpdated.removeListener(onGroupUpdated)
+    chrome.tabGroups.onRemoved.removeListener(onGroupRemoved)
+    chrome.tabGroups.onMoved.removeListener(onGroupMoved)
   }
-
-  add(chrome.tabs.onCreated as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabs.onRemoved as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabs.onUpdated as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabs.onMoved as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabs.onAttached as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabs.onDetached as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabs.onReplaced as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabGroups.onCreated as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabGroups.onUpdated as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabGroups.onRemoved as chrome.events.Event<(...args: any[]) => void>)
-  add(chrome.tabGroups.onMoved as chrome.events.Event<(...args: any[]) => void>)
-
-  return () => listeners.forEach(([event, listener]) => event.removeListener(listener))
 }
 
 export function subscribeToBookmarkChanges(onChange: () => void) {
   if (!hasChromeRuntime() || !chrome.bookmarks) return () => undefined
 
-  const events = [
-    chrome.bookmarks.onCreated,
-    chrome.bookmarks.onRemoved,
-    chrome.bookmarks.onChanged,
-    chrome.bookmarks.onMoved,
-    chrome.bookmarks.onChildrenReordered,
-    chrome.bookmarks.onImportEnded,
-  ]
-  const listener = () => onChange()
-  events.forEach((event) => event.addListener(listener as never))
-  return () => events.forEach((event) => event.removeListener(listener as never))
+  const onCreated = () => onChange()
+  const onRemoved = () => onChange()
+  const onChanged = () => onChange()
+  const onMoved = () => onChange()
+  const onChildrenReordered = () => onChange()
+  const onImportEnded = () => onChange()
+
+  chrome.bookmarks.onCreated.addListener(onCreated)
+  chrome.bookmarks.onRemoved.addListener(onRemoved)
+  chrome.bookmarks.onChanged.addListener(onChanged)
+  chrome.bookmarks.onMoved.addListener(onMoved)
+  chrome.bookmarks.onChildrenReordered.addListener(onChildrenReordered)
+  chrome.bookmarks.onImportEnded.addListener(onImportEnded)
+
+  return () => {
+    chrome.bookmarks.onCreated.removeListener(onCreated)
+    chrome.bookmarks.onRemoved.removeListener(onRemoved)
+    chrome.bookmarks.onChanged.removeListener(onChanged)
+    chrome.bookmarks.onMoved.removeListener(onMoved)
+    chrome.bookmarks.onChildrenReordered.removeListener(onChildrenReordered)
+    chrome.bookmarks.onImportEnded.removeListener(onImportEnded)
+  }
 }
 
 export async function activateTab(tab: BrowserTab) {
