@@ -1,21 +1,20 @@
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  base: './',
+
   server: {
     port: 5173,
   },
+
   plugins: [
-    tanstackStart({
-      spa: {
-        enabled: true,
-        prerender: {
-          outputPath: '/index.html',
-          crawlLinks: false,
-        },
-      },
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
     }),
     react(),
   ],
+
 })
