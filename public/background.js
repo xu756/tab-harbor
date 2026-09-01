@@ -4,7 +4,7 @@ async function enableActionSidePanel() {
   try {
     await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
   } catch (error) {
-    console.warn('[Tab Harbor] Unable to enable side panel action:', error)
+    console.warn('[Harbor] Unable to enable side panel action:', error)
   }
 }
 

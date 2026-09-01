@@ -1,5 +1,5 @@
-import { demoTabs } from './demo-data'
-import type { BrowserTab } from './types'
+import { demoBookmarks, demoTabs } from './demo-data'
+import type { BrowserBookmark, BrowserTab } from './types'
 
 const NO_GROUP = -1
 
@@ -7,7 +7,7 @@ export function hasChromeRuntime() {
   return typeof chrome !== 'undefined' && Boolean(chrome.runtime?.id) && Boolean(chrome.tabs)
 }
 
-function isTabHarborUrl(url: string) {
+function isHarborUrl(url: string) {
   if (!hasChromeRuntime()) return false
   const root = chrome.runtime.getURL('index.html')
   return url === root || url.startsWith(`${root}?`) || url === 'chrome://newtab/'
@@ -35,7 +35,7 @@ export async function queryLiveTabs(): Promise<BrowserTab[]> {
   )
 
   return tabs
-    .filter((tab) => typeof tab.id === 'number' && Boolean(tab.url) && !isTabHarborUrl(tab.url ?? ''))
+    .filter((tab) => typeof tab.id === 'number' && Boolean(tab.url) && !isHarborUrl(tab.url ?? ''))
     .map((tab) => {
       const group = typeof tab.groupId === 'number' ? groupMap.get(tab.groupId) : undefined
       return {
@@ -58,48 +58,74 @@ export async function queryLiveTabs(): Promise<BrowserTab[]> {
     .filter((tab) => !tab.incognito)
 }
 
+export async function queryBookmarks(): Promise<BrowserBookmark[]> {
+  if (!hasChromeRuntime() || !chrome.bookmarks?.getTree) return demoBookmarks
+
+  const roots = await chrome.bookmarks.getTree()
+  const rows: BrowserBookmark[] = []
+
+  const visit = (nodes: chrome.bookmarks.BookmarkTreeNode[], path: string[]) => {
+    for (const node of nodes) {
+      if (node.url) {
+        rows.push({
+          id: node.id,
+          title: node.title?.trim() || node.url,
+          url: node.url,
+          folderPath: path.filter(Boolean).join(' / ') || '书签',
+          dateAdded: node.dateAdded,
+        })
+        continue
+      }
+
+      const nextPath = node.title ? [...path, node.title] : path
+      if (node.children?.length) visit(node.children, nextPath)
+    }
+  }
+
+  visit(roots, [])
+  return rows
+}
+
 export function subscribeToTabChanges(onChange: () => void) {
   if (!hasChromeRuntime()) return () => undefined
 
-  const onCreated = () => onChange()
-  const onRemoved = () => onChange()
-  const onUpdated = () => onChange()
-  const onMoved = () => onChange()
-  const onAttached = () => onChange()
-  const onDetached = () => onChange()
-  const onReplaced = () => onChange()
-  const onGroupCreated = () => onChange()
-  const onGroupUpdated = () => onChange()
-  const onGroupRemoved = () => onChange()
-  const onGroupMoved = () => onChange()
-
-  chrome.tabs.onCreated.addListener(onCreated)
-  chrome.tabs.onRemoved.addListener(onRemoved)
-  chrome.tabs.onUpdated.addListener(onUpdated)
-  chrome.tabs.onMoved.addListener(onMoved)
-  chrome.tabs.onAttached.addListener(onAttached)
-  chrome.tabs.onDetached.addListener(onDetached)
-  chrome.tabs.onReplaced.addListener(onReplaced)
-
-  chrome.tabGroups.onCreated.addListener(onGroupCreated)
-  chrome.tabGroups.onUpdated.addListener(onGroupUpdated)
-  chrome.tabGroups.onRemoved.addListener(onGroupRemoved)
-  chrome.tabGroups.onMoved.addListener(onGroupMoved)
-
-  return () => {
-    chrome.tabs.onCreated.removeListener(onCreated)
-    chrome.tabs.onRemoved.removeListener(onRemoved)
-    chrome.tabs.onUpdated.removeListener(onUpdated)
-    chrome.tabs.onMoved.removeListener(onMoved)
-    chrome.tabs.onAttached.removeListener(onAttached)
-    chrome.tabs.onDetached.removeListener(onDetached)
-    chrome.tabs.onReplaced.removeListener(onReplaced)
-
-    chrome.tabGroups.onCreated.removeListener(onGroupCreated)
-    chrome.tabGroups.onUpdated.removeListener(onGroupUpdated)
-    chrome.tabGroups.onRemoved.removeListener(onGroupRemoved)
-    chrome.tabGroups.onMoved.removeListener(onGroupMoved)
+  const listeners: Array<[chrome.events.Event<(...args: any[]) => void>, (...args: any[]) => void]> = []
+  const add = (event: chrome.events.Event<(...args: any[]) => void> | undefined) => {
+    if (!event?.addListener) return
+    const listener = () => onChange()
+    event.addListener(listener)
+    listeners.push([event, listener])
   }
+
+  add(chrome.tabs.onCreated as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabs.onRemoved as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabs.onUpdated as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabs.onMoved as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabs.onAttached as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabs.onDetached as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabs.onReplaced as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabGroups.onCreated as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabGroups.onUpdated as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabGroups.onRemoved as chrome.events.Event<(...args: any[]) => void>)
+  add(chrome.tabGroups.onMoved as chrome.events.Event<(...args: any[]) => void>)
+
+  return () => listeners.forEach(([event, listener]) => event.removeListener(listener))
+}
+
+export function subscribeToBookmarkChanges(onChange: () => void) {
+  if (!hasChromeRuntime() || !chrome.bookmarks) return () => undefined
+
+  const events = [
+    chrome.bookmarks.onCreated,
+    chrome.bookmarks.onRemoved,
+    chrome.bookmarks.onChanged,
+    chrome.bookmarks.onMoved,
+    chrome.bookmarks.onChildrenReordered,
+    chrome.bookmarks.onImportEnded,
+  ]
+  const listener = () => onChange()
+  events.forEach((event) => event.addListener(listener as never))
+  return () => events.forEach((event) => event.removeListener(listener as never))
 }
 
 export async function activateTab(tab: BrowserTab) {
@@ -124,11 +150,21 @@ export async function openUrl(url: string) {
   }
 
   const [active] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (active?.id) {
-    await chrome.tabs.update(active.id, { url })
-  } else {
-    await chrome.tabs.create({ url })
+  if (active?.id) await chrome.tabs.update(active.id, { url })
+  else await chrome.tabs.create({ url })
+}
+
+export async function openUrlInNewTab(url: string) {
+  if (!hasChromeRuntime()) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+    return
   }
+  await chrome.tabs.create({ url })
+}
+
+export async function openBookmarksManager() {
+  if (!hasChromeRuntime()) return
+  await chrome.tabs.create({ url: 'chrome://bookmarks/' })
 }
 
 export async function restoreUrls(urls: string[]) {
@@ -141,6 +177,11 @@ export async function restoreUrls(urls: string[]) {
   }
 
   await chrome.windows.create({ url: safeUrls })
+}
+
+export function faviconUrlForPage(url: string, size = 32) {
+  if (!hasChromeRuntime()) return ''
+  return chrome.runtime.getURL(`_favicon/?pageUrl=${encodeURIComponent(url)}&size=${size}`)
 }
 
 export function hostnameFromUrl(url: string) {

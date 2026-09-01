@@ -12,7 +12,7 @@ interface UiState {
 
 function initialTheme(): ThemeMode {
   if (typeof window === 'undefined') return 'system'
-  const value = window.localStorage.getItem('tabHarbor.theme')
+  const value = window.localStorage.getItem('harbor.theme') ?? window.localStorage.getItem('tabHarbor.theme')
   return value === 'light' || value === 'dark' ? value : 'system'
 }
 
@@ -51,7 +51,7 @@ export function setCommandOpen(commandOpen: boolean) {
 export function cycleTheme() {
   uiStore.setState((state) => {
     const theme: ThemeMode = state.theme === 'system' ? 'light' : state.theme === 'light' ? 'dark' : 'system'
-    if (typeof window !== 'undefined') window.localStorage.setItem('tabHarbor.theme', theme)
+    if (typeof window !== 'undefined') window.localStorage.setItem('harbor.theme', theme)
     return { ...state, theme }
   })
 }

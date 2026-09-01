@@ -1,4 +1,4 @@
-export type WorkspaceView = 'home' | 'workspaces' | 'devices'
+export type WorkspaceView = 'home' | 'tabs' | 'bookmarks' | 'workspaces'
 
 export interface BrowserTab {
   id: number
@@ -15,6 +15,14 @@ export interface BrowserTab {
   groupTitle?: string
   groupColor?: string
   incognito: boolean
+}
+
+export interface BrowserBookmark {
+  id: string
+  title: string
+  url: string
+  folderPath: string
+  dateAdded?: number
 }
 
 export interface SavedTab {
@@ -40,6 +48,14 @@ export interface QuickLink {
   title: string
   url: string
   label: string
+}
+
+export interface TodoItem {
+  id: string
+  text: string
+  completed: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface TabGroupBucket {

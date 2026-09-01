@@ -1,6 +1,6 @@
-import type { BrowserTab, QuickLink } from './types'
+import type { BrowserBookmark, BrowserTab, QuickLink } from './types'
 
-export const quickLinks: QuickLink[] = [
+export const defaultQuickLinks: QuickLink[] = [
   { id: 'github', title: 'GitHub', url: 'https://github.com', label: 'GH' },
   { id: 'chatgpt', title: 'ChatGPT', url: 'https://chatgpt.com', label: 'AI' },
   { id: 'google', title: 'Google', url: 'https://google.com', label: 'G' },
@@ -11,12 +11,12 @@ export const quickLinks: QuickLink[] = [
 const demoRows = [
   ['Calcium-Ion', 'https://github.com/xu756/Calcium-Ion', 'GitHub'],
   ['tab-harbor', 'https://github.com/xu756/tab-harbor', 'GitHub'],
-  ['TanStack Start', 'https://tanstack.com/start/latest', 'Docs'],
+  ['TanStack Router', 'https://tanstack.com/router/latest', 'Docs'],
   ['5173 Admin', 'http://localhost:5173', 'Localhost'],
   ['3000 go-flow', 'http://localhost:3000', 'Localhost'],
   ['Grafana', 'http://localhost:3001', 'Localhost'],
   ['百度翻译', 'https://fanyi.baidu.com', 'Baidu'],
-  ['Shadcn Theme Generator', 'https://tweakcn.com', 'Design'],
+  ['shadcn/ui', 'https://ui.shadcn.com', 'Design'],
   ['Deployments', 'https://vercel.com/dashboard', 'Deploy'],
   ['ChatGPT', 'https://chatgpt.com', 'AI'],
   ['Claude', 'https://claude.ai', 'AI'],
@@ -41,3 +41,11 @@ export const demoTabs: BrowserTab[] = demoRows.map(([title, url, groupTitle], in
   groupColor: groupTitle === 'GitHub' ? 'blue' : groupTitle === 'Localhost' ? 'green' : undefined,
   incognito: false,
 }))
+
+export const demoBookmarks: BrowserBookmark[] = [
+  { id: 'b1', title: 'TanStack Router', url: 'https://tanstack.com/router/latest', folderPath: '书签栏 / 开发', dateAdded: Date.now() - 60_000 },
+  { id: 'b2', title: 'Chrome Extensions', url: 'https://developer.chrome.com/docs/extensions', folderPath: '书签栏 / 开发', dateAdded: Date.now() - 120_000 },
+  { id: 'b3', title: 'shadcn/ui', url: 'https://ui.shadcn.com', folderPath: '书签栏 / 设计', dateAdded: Date.now() - 180_000 },
+  { id: 'b4', title: 'arXiv', url: 'https://arxiv.org', folderPath: '书签栏 / 研究', dateAdded: Date.now() - 240_000 },
+  { id: 'b5', title: 'Google Scholar', url: 'https://scholar.google.com', folderPath: '书签栏 / 研究', dateAdded: Date.now() - 300_000 },
+]
