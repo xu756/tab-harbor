@@ -6,9 +6,11 @@ interface DashboardSearch {
   view: WorkspaceView
 }
 
+const views: WorkspaceView[] = ['home', 'tabs', 'bookmarks', 'workspaces']
+
 export const Route = createFileRoute('/')({
   validateSearch: (search: Record<string, unknown>): DashboardSearch => ({
-    view: search.view === 'workspaces' || search.view === 'devices' ? search.view : 'home',
+    view: views.includes(search.view as WorkspaceView) ? (search.view as WorkspaceView) : 'home',
   }),
   component: DashboardRoute,
 })
