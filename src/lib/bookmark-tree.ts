@@ -38,6 +38,13 @@ export interface BookmarkLeafRow extends BookmarkTreeRowBase {
 
 export type BookmarkTreeRow = BookmarkFolderRow | BookmarkLeafRow
 
+export type BookmarkTreeKeyAction =
+  | { type: 'focus'; id: string }
+  | { type: 'expand'; id: string }
+  | { type: 'collapse'; id: string }
+  | { type: 'activate'; id: string }
+  | { type: 'none' }
+
 export function buildBookmarkTree(
   bookmarks: BrowserBookmark[],
 ): BookmarkFolderNode[] {
@@ -102,6 +109,21 @@ export function getInitialExpandedFolderIds(tree: BookmarkFolderNode[]) {
   return new Set(tree.map((folder) => folder.id))
 }
 
+export function parseExpandedFolderIds(
+  raw: string | null,
+  fallback: ReadonlySet<string>,
+) {
+  if (!raw) return new Set(fallback)
+  try {
+    const value: unknown = JSON.parse(raw)
+    return Array.isArray(value) && value.every((id) => typeof id === 'string')
+      ? new Set(value)
+      : new Set(fallback)
+  } catch {
+    return new Set(fallback)
+  }
+}
+
 export function flattenBookmarkTree(
   tree: BookmarkFolderNode[],
   expanded: ReadonlySet<string>,
@@ -143,6 +165,62 @@ export function flattenBookmarkTree(
 
   for (const folder of tree) visitFolder(folder)
   return rows
+}
+
+export function getBookmarkTreeKeyAction(
+  rows: BookmarkTreeRow[],
+  currentId: string,
+  key: string,
+): BookmarkTreeKeyAction {
+  const currentIndex = rows.findIndex((row) => row.id === currentId)
+  const current = rows[currentIndex]
+  if (!current) return { type: 'none' }
+
+  if (key === 'ArrowDown' && currentIndex < rows.length - 1) {
+    return { type: 'focus', id: rows[currentIndex + 1]!.id }
+  }
+  if (key === 'ArrowUp' && currentIndex > 0) {
+    return { type: 'focus', id: rows[currentIndex - 1]!.id }
+  }
+  if (key === 'Home' && rows[0]) {
+    return { type: 'focus', id: rows[0].id }
+  }
+  if (key === 'End' && rows.at(-1)) {
+    return { type: 'focus', id: rows.at(-1)!.id }
+  }
+  if (
+    key === 'ArrowRight' &&
+    current.kind === 'folder' &&
+    current.hasChildren &&
+    !current.expanded
+  ) {
+    return { type: 'expand', id: current.id }
+  }
+  if (
+    key === 'ArrowRight' &&
+    current.kind === 'folder' &&
+    current.expanded &&
+    rows[currentIndex + 1]?.depth > current.depth
+  ) {
+    return { type: 'focus', id: rows[currentIndex + 1]!.id }
+  }
+  if (key === 'ArrowLeft' && current.kind === 'folder' && current.expanded) {
+    return { type: 'collapse', id: current.id }
+  }
+  if (key === 'ArrowLeft' && current.parentId) {
+    return { type: 'focus', id: current.parentId }
+  }
+  if (key === 'Enter' && current.kind === 'folder' && current.hasChildren) {
+    return {
+      type: current.expanded ? 'collapse' : 'expand',
+      id: current.id,
+    }
+  }
+  if (key === 'Enter' && current.kind === 'bookmark') {
+    return { type: 'activate', id: current.id }
+  }
+
+  return { type: 'none' }
 }
 
 function flattenMatchingFolder(
