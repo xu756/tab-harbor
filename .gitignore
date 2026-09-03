@@ -6,6 +6,7 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+.superpowers/
 *.zip
 src/routeTree.gen.ts
 CLAUDE.local.md

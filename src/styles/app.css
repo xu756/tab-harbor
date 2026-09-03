@@ -383,15 +383,21 @@ kbd {
 .bookmark-surface { max-width: 1120px; padding-top: 14px; }
 .bookmark-search { height: 42px; margin: 0 14px; padding: 0 11px; }
 .bookmark-scroll { position: relative; height: min(710px, calc(100vh - 220px)); min-height: 460px; overflow: auto; border-top: 1px solid var(--line-soft); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.bookmark-folder { height: 45px; padding: 0 15px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line-soft); background: color-mix(in srgb, var(--surface-solid) 88%, transparent); color: var(--text-soft); }
-.bookmark-folder strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-size: 10px; font-weight: 650; }
-.bookmark-folder span { color: var(--text-faint); font-size: 9px; }
-.bookmark-row { height: 48px; padding: 0 9px 0 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid color-mix(in srgb, var(--line-soft) 76%, transparent); }
-.bookmark-row:hover { background: color-mix(in srgb, var(--surface-hover) 70%, transparent); }
-.bookmark-main { min-width: 0; flex: 1; border: 0; background: transparent; display: flex; align-items: center; gap: 10px; padding: 0; text-align: left; cursor: pointer; }
-.bookmark-main > span:last-child { min-width: 0; display: grid; gap: 2px; }
-.bookmark-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 550; }
-.bookmark-main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-faint); font-size: 8px; }
+.bookmark-tree { position: relative; min-width: 100%; padding: 4px 0 8px; }
+.bookmark-tree-row { --tree-depth: 0; width: 100%; height: 34px; display: flex; align-items: center; color: var(--text-soft); transition: background .1s ease, color .1s ease; }
+.bookmark-tree-row:hover { background: color-mix(in srgb, var(--surface-hover) 72%, transparent); color: var(--text); }
+.bookmark-tree-row:focus-visible { outline: 1px solid var(--focus); outline-offset: -1px; background: color-mix(in srgb, var(--surface-soft) 92%, transparent); color: var(--text); }
+.bookmark-tree-main { min-width: 0; height: 100%; flex: 1; border: 0; background: transparent; display: flex; align-items: center; gap: 6px; padding: 0 7px 0 calc(9px + var(--tree-depth) * 16px); text-align: left; cursor: pointer; color: inherit; }
+.tree-disclosure { width: 14px; height: 18px; flex: 0 0 14px; display: grid; place-items: center; color: var(--text-faint); transition: transform .12s ease; }
+.tree-disclosure.expanded { transform: rotate(90deg); }
+.tree-folder-icon { flex: 0 0 auto; color: color-mix(in srgb, var(--warning) 72%, var(--text-soft)); }
+.tree-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 520; letter-spacing: -.005em; }
+.bookmark-tree-row.folder .tree-label { color: var(--text); font-weight: 590; }
+.tree-count { margin-left: auto; color: var(--text-faint); font-size: 8px; font-variant-numeric: tabular-nums; }
+.bookmark-tree-row .site-icon.small { width: 18px; height: 18px; border: 0; border-radius: 4px; background: transparent; font-size: 6px; }
+.bookmark-tree-row .site-icon.small img { width: 14px; height: 14px; }
+.tree-open-action { width: 28px; height: 28px; flex: 0 0 28px; margin-right: 5px; border-radius: 7px; opacity: .18; transition: opacity .1s ease, background .1s ease; }
+.bookmark-tree-row:hover .tree-open-action, .bookmark-tree-row:focus-within .tree-open-action, .tree-open-action:focus-visible { opacity: 1; }
 
 .workspace-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .workspace-card { min-width: 0; min-height: 220px; border: 1px solid var(--line-soft); border-radius: 17px; background: var(--surface); box-shadow: var(--shadow-sm); padding: 16px; display: flex; flex-direction: column; }
@@ -497,6 +503,8 @@ kbd {
   .rail-card { padding: 14px; }
   .field-grid { grid-template-columns: 1fr; }
   .selection-bar { width: calc(100% - 24px); justify-content: center; }
+  .bookmark-tree-main { padding-left: calc(6px + var(--tree-depth) * 14px); }
+  .tree-open-action { opacity: .64; }
 }
 
 @media (prefers-reduced-motion: reduce) {
