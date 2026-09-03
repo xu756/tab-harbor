@@ -1,5 +1,7 @@
 # Bookmark Tree Explorer Design
 
+> Superseded by `2026-09-03-bookmark-organizer-design.md` after the approved switch to a two-pane organizer.
+
 ## Status
 
 Approved direction: classic single-column explorer inspired by VS Code.
