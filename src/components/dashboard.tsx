@@ -11,7 +11,6 @@ import {
   Clock3,
   Command,
   ExternalLink,
-  Folder,
   FolderOpen,
   Globe2,
   LayoutGrid,
@@ -33,12 +32,15 @@ import {
   Monitor,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { BookmarkOrganizer } from './bookmark-organizer'
 import {
   activateTab,
   closeTabs,
   faviconUrlForPage,
   hostnameFromUrl,
+  importBookmarkNodes,
+  moveBookmark,
   normalizeUrl,
   openBookmarksManager,
   openUrl,
@@ -48,6 +50,7 @@ import {
   restoreUrls,
   subscribeToBookmarkChanges,
   subscribeToTabChanges,
+  updateBookmark,
 } from '../lib/chrome'
 import {
   clearCompletedTodos,
@@ -63,14 +66,6 @@ import {
   saveQuickLink,
   updateTodo,
 } from '../lib/storage'
-import {
-  buildBookmarkTree,
-  flattenBookmarkTree,
-  getBookmarkTreeKeyAction,
-  getInitialExpandedFolderIds,
-  parseExpandedFolderIds,
-} from '../lib/bookmark-tree'
-import type { BookmarkTreeRow } from '../lib/bookmark-tree'
 import type {
   BrowserBookmark,
   BrowserTab,
@@ -94,7 +89,6 @@ const BOOKMARKS_QUERY_KEY = ['bookmarks'] as const
 const WORKSPACES_QUERY_KEY = ['workspaces'] as const
 const QUICK_LINKS_QUERY_KEY = ['quick-links'] as const
 const TODOS_QUERY_KEY = ['todos'] as const
-const BOOKMARK_EXPANSION_KEY = 'harbor.bookmarks.expanded'
 
 type TabVirtualRow =
   | { kind: 'group'; key: string; group: TabGroupBucket }
@@ -184,7 +178,32 @@ export function Dashboard({ view, onNavigate }: DashboardProps) {
           <TabsView tabs={tabs} loading={tabsQuery.isLoading} onSave={setSaveCandidate} />
         ) : null}
         {view === 'bookmarks' ? (
-          <BookmarksView bookmarks={bookmarks} loading={bookmarksQuery.isLoading} />
+          <section className="wide-view">
+            <PageHeading
+              eyebrow="CHROME BOOKMARKS"
+              title="书签"
+              description={`像资源管理器一样整理 Chrome 书签，共 ${bookmarks.length} 项。点击名称会在新标签页打开。`}
+            />
+            <BookmarkOrganizer
+              catalog={bookmarkCatalog}
+              loading={bookmarksQuery.isLoading}
+              onOpen={(bookmark) => openUrlInNewTab(bookmark.url)}
+              onUpdate={async (id, patch) => {
+                await updateBookmark(id, patch)
+                await queryClient.invalidateQueries({ queryKey: BOOKMARKS_QUERY_KEY })
+              }}
+              onMove={async (id, destination) => {
+                await moveBookmark(id, destination)
+                await queryClient.invalidateQueries({ queryKey: BOOKMARKS_QUERY_KEY })
+              }}
+              onImport={async (nodes, onProgress) => {
+                const rootId = await importBookmarkNodes(nodes, onProgress)
+                await queryClient.invalidateQueries({ queryKey: BOOKMARKS_QUERY_KEY })
+                return rootId
+              }}
+              onOpenManager={openBookmarksManager}
+            />
+          </section>
         ) : null}
         {view === 'workspaces' ? (
           <WorkspacesView
@@ -459,180 +478,6 @@ function TabRow({ tab, selected, onClose }: { tab: BrowserTab; selected: boolean
       </button>
       <span className="tab-signals">{tab.pinned ? <Pin size={12} /> : null}{tab.audible ? <Volume2 size={12} /> : null}{tab.discarded ? <span className="sleep-dot" /> : null}</span>
       <button className="row-close" type="button" onClick={onClose} aria-label={`关闭 ${tab.title}`}><X size={14} /></button>
-    </div>
-  )
-}
-
-function BookmarksView({ bookmarks, loading }: { bookmarks: BrowserBookmark[]; loading: boolean }) {
-  const [search, setSearch] = useState('')
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [expansionReady, setExpansionReady] = useState(false)
-  const [focusedId, setFocusedId] = useState<string>()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const normalized = search.trim().toLowerCase()
-  const tree = useMemo(() => buildBookmarkTree(bookmarks), [bookmarks])
-  const rows = useMemo(
-    () => flattenBookmarkTree(tree, expanded, normalized),
-    [tree, expanded, normalized],
-  )
-  const visibleBookmarks = rows.filter((row) => row.kind === 'bookmark').length
-  const virtualizer = useVirtualizer({ count: rows.length, getScrollElement: () => scrollRef.current, estimateSize: () => 34, overscan: 24 })
-
-  useEffect(() => {
-    if (tree.length === 0 || expansionReady) return
-    const initialExpanded = getInitialExpandedFolderIds(tree)
-    const saved = window.localStorage.getItem(BOOKMARK_EXPANSION_KEY)
-    setExpanded(parseExpandedFolderIds(saved, initialExpanded))
-    setExpansionReady(true)
-  }, [expansionReady, tree])
-
-  useEffect(() => {
-    if (!expansionReady) return
-    window.localStorage.setItem(
-      BOOKMARK_EXPANSION_KEY,
-      JSON.stringify([...expanded]),
-    )
-  }, [expanded, expansionReady])
-
-  useEffect(() => {
-    if (rows.length === 0) {
-      setFocusedId(undefined)
-      return
-    }
-    if (!focusedId || !rows.some((row) => row.id === focusedId)) {
-      setFocusedId(rows[0]!.id)
-    }
-  }, [focusedId, rows])
-
-  const focusTreeRow = (id: string) => {
-    const index = rows.findIndex((row) => row.id === id)
-    if (index < 0) return
-    setFocusedId(id)
-    virtualizer.scrollToIndex(index, { align: 'auto' })
-    window.requestAnimationFrame(() => {
-      const elements = scrollRef.current?.querySelectorAll<HTMLElement>('[data-tree-id]')
-      const target = [...(elements ?? [])].find((element) => element.dataset.treeId === id)
-      target?.focus()
-    })
-  }
-
-  const setFolderExpanded = (id: string, shouldExpand: boolean) => {
-    setExpanded((current) => {
-      const next = new Set(current)
-      if (shouldExpand) next.add(id)
-      else next.delete(id)
-      return next
-    })
-  }
-
-  const activateRow = (row: BookmarkTreeRow) => {
-    if (row.kind === 'folder') {
-      setFolderExpanded(row.id, !row.expanded)
-      focusTreeRow(row.id)
-      return
-    }
-    void openUrl(row.bookmark.url)
-  }
-
-  const handleTreeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>, row: BookmarkTreeRow) => {
-    const action = getBookmarkTreeKeyAction(rows, row.id, event.key)
-    if (action.type === 'none') return
-    event.preventDefault()
-
-    if (action.type === 'focus') focusTreeRow(action.id)
-    if (action.type === 'expand') setFolderExpanded(action.id, true)
-    if (action.type === 'collapse') setFolderExpanded(action.id, false)
-    if (action.type === 'activate' && row.kind === 'bookmark') void openUrl(row.bookmark.url)
-  }
-
-  return (
-    <section className="wide-view">
-      <PageHeading eyebrow="CHROME BOOKMARKS" title="书签" description={`直接查看 Chrome 中的全部书签，共 ${bookmarks.length} 项。`} action={
-        <button className="secondary-button" type="button" onClick={() => void openBookmarksManager()}><ExternalLink size={14} />Chrome 书签管理器</button>
-      } />
-      <div className="surface bookmark-surface">
-        <label className="search-field bookmark-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索书签、网址或文件夹" />{search ? <button type="button" onClick={() => setSearch('')}><X size={14} /></button> : null}</label>
-        <div className="list-meta"><span>{tree.length} 个顶层文件夹</span><span>{normalized ? `${visibleBookmarks} 项匹配` : `${bookmarks.length} 项`}</span></div>
-        <div className="bookmark-scroll" ref={scrollRef}>
-          {loading ? <EmptyState title="正在读取 Chrome 书签…" /> : null}
-          {!loading && rows.length === 0 ? <EmptyState icon={<Bookmark size={18} />} title="没有找到书签" description="试试其他关键词。" /> : null}
-          {rows.length > 0 ? <div className="bookmark-tree" role="tree" aria-label="Chrome 书签"><div className="virtual-canvas" style={{ height: virtualizer.getTotalSize() }}>{virtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index]
-            if (!row) return null
-            return <div key={row.id} className="virtual-row" style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}><BookmarkTreeItem
-              row={row}
-              tabIndex={focusedId === row.id ? 0 : -1}
-              onActivate={() => activateRow(row)}
-              onFocus={() => setFocusedId(row.id)}
-              onKeyDown={(event) => handleTreeKeyDown(event, row)}
-              onOpenNewTab={() => row.kind === 'bookmark' && void openUrlInNewTab(row.bookmark.url)}
-            /></div>
-          })}</div></div> : null}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-interface BookmarkTreeItemProps {
-  row: BookmarkTreeRow
-  tabIndex: number
-  onActivate: () => void
-  onFocus: () => void
-  onKeyDown: (event: ReactKeyboardEvent<HTMLDivElement>) => void
-  onOpenNewTab: () => void
-}
-
-export function BookmarkTreeItem({
-  row,
-  tabIndex,
-  onActivate,
-  onFocus,
-  onKeyDown,
-  onOpenNewTab,
-}: BookmarkTreeItemProps) {
-  const style = { '--tree-depth': row.depth } as CSSProperties
-
-  return (
-    <div
-      className={`bookmark-tree-row ${row.kind}`}
-      role="treeitem"
-      aria-level={row.depth + 1}
-      aria-expanded={row.kind === 'folder' ? row.expanded : undefined}
-      data-tree-id={row.id}
-      style={style}
-      tabIndex={tabIndex}
-      title={row.kind === 'folder' ? row.folder.path.join(' / ') : row.bookmark.url}
-      onFocus={onFocus}
-      onKeyDown={onKeyDown}
-    >
-      {row.kind === 'folder' ? (
-        <button className="bookmark-tree-main" type="button" tabIndex={-1} onClick={onActivate}>
-          <span className={row.expanded ? 'tree-disclosure expanded' : 'tree-disclosure'}>
-            <ChevronRight size={13} />
-          </span>
-          <Folder size={14} className="tree-folder-icon" />
-          <span className="tree-label">{row.label}</span>
-          <span className="tree-count">{row.folder.bookmarkCount}</span>
-        </button>
-      ) : (
-        <>
-          <button className="bookmark-tree-main" type="button" tabIndex={-1} onClick={onActivate}>
-            <span className="tree-disclosure" />
-            <SiteIcon title={row.bookmark.title} url={row.bookmark.url} small />
-            <span className="tree-label">{row.label}</span>
-          </button>
-          <button
-            className="ghost-icon tree-open-action"
-            type="button"
-            onClick={onOpenNewTab}
-            title="在新标签打开"
-            aria-label={`在新标签打开 ${row.label}`}
-          >
-            <ExternalLink size={13} />
-          </button>
-        </>
-      )}
     </div>
   )
 }
