@@ -133,6 +133,7 @@ export function BookmarkOrganizer({
     () => new Set(catalog.folders.map((folder) => folder.id)),
   )
   const [storageReady, setStorageReady] = useState(false)
+  const [expansionReady, setExpansionReady] = useState(false)
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string>()
   const [draft, setDraft] = useState({ title: '', url: '' })
@@ -152,6 +153,7 @@ export function BookmarkOrganizer({
   }>()
   const listRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const storedSelectedFolder = useRef<string | undefined>(undefined)
   const folderHoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   )
@@ -206,9 +208,7 @@ export function BookmarkOrganizer({
       const storedExpanded = JSON.parse(
         window.localStorage.getItem(EXPANDED_KEY) ?? 'null',
       ) as unknown
-      if (storedSelected && allFolders.some((folder) => folder.id === storedSelected)) {
-        setSelectedFolderId(storedSelected)
-      }
+      storedSelectedFolder.current = storedSelected ?? undefined
       if (
         Array.isArray(storedExpanded) &&
         storedExpanded.every((id) => typeof id === 'string')
@@ -220,6 +220,7 @@ export function BookmarkOrganizer({
             ),
           ),
         )
+        setExpansionReady(true)
       }
     } finally {
       setStorageReady(true)
@@ -230,14 +231,28 @@ export function BookmarkOrganizer({
     if (selectedFolderId && allFolders.some((folder) => folder.id === selectedFolderId)) {
       return
     }
-    setSelectedFolderId(fallbackFolder?.id ?? '')
+    const storedFolder = allFolders.find(
+      (folder) => folder.id === storedSelectedFolder.current,
+    )
+    setSelectedFolderId(storedFolder?.id ?? fallbackFolder?.id ?? '')
   }, [allFolders, fallbackFolder?.id, selectedFolderId])
 
   useEffect(() => {
-    if (!storageReady) return
+    if (!storageReady || expansionReady || catalog.folders.length === 0) return
+    setExpanded(new Set(catalog.folders.map((folder) => folder.id)))
+    setExpansionReady(true)
+  }, [catalog.folders, expansionReady, storageReady])
+
+  useEffect(() => {
+    if (
+      !storageReady ||
+      !expansionReady ||
+      !selectedFolderId ||
+      allFolders.length === 0
+    ) return
     window.localStorage.setItem(SELECTED_KEY, selectedFolderId)
     window.localStorage.setItem(EXPANDED_KEY, JSON.stringify([...expanded]))
-  }, [expanded, selectedFolderId, storageReady])
+  }, [allFolders.length, expanded, expansionReady, selectedFolderId, storageReady])
 
   useEffect(
     () => () => {
