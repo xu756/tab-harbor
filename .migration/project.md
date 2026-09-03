@@ -44,10 +44,22 @@ and are intentionally left unchanged and uncommitted.
 
 ## Manual verification
 
-- Run the browser preview and exercise all four routes.
-- Load `dist/client` as an unpacked extension.
-- Verify the new-tab override and side panel.
-- Verify bookmark editing, default-new-tab opening, drag moves, ordering, import,
-  export, and persisted tree expansion.
+- Browser preview rendered at 1440px and 420px widths.
+- `/`, `/tabs`, `/bookmarks`, and `/workspaces` mounted through hash history.
+- Legacy `?view=` navigation redirected to the equivalent path.
+- The bookmark tree showed every folder expanded on first visit and wrote the
+  versioned organizer state.
+- Production build and automated tests cover extension routing, bookmark edits,
+  move calculations, import rollback, HTML import/export, and organizer state.
+
+## Result
+
+- Removed the monolithic `Dashboard` component.
+- Removed the old page-specific CSS control library.
+- Added a shared app provider and route shell.
+- Added route-level feature components for home, tabs, bookmarks, and workspaces.
+- Replaced custom menus, overlays, form controls, selections, empty states,
+  loading states, buttons, badges, avatars, cards, and tooltips with shadcn.
+- Kept the hidden native file input required by the browser upload picker.
 
 0 wrappers remain on Radix

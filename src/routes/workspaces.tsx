@@ -1,13 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Dashboard } from '../components/dashboard'
-import { pathForView } from '../lib/app-routes'
+import { WorkspacesPage } from '@/features/workspaces/workspaces-page'
 
 export const Route = createFileRoute('/workspaces')({
-  component: WorkspacesRoute,
+  component: WorkspacesPage,
 })
-
-function WorkspacesRoute() {
-  const navigate = Route.useNavigate()
-  return <Dashboard view="workspaces" onNavigate={(view) => navigate({ to: pathForView(view) })} />
-}

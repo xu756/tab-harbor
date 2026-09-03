@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Dashboard } from '../components/dashboard'
-import { legacyViewPath, pathForView } from '../lib/app-routes'
+import { HomePage } from '@/features/home/home-page'
+import { legacyViewPath } from '../lib/app-routes'
 
 interface DashboardSearch {
   view?: string
@@ -16,16 +16,5 @@ export const Route = createFileRoute('/')({
     const to = legacyViewPath(search.view)
     if (to) throw redirect({ to, replace: true })
   },
-  component: DashboardRoute,
+  component: HomePage,
 })
-
-function DashboardRoute() {
-  const navigate = Route.useNavigate()
-
-  return (
-    <Dashboard
-      view="home"
-      onNavigate={(view) => navigate({ to: pathForView(view) })}
-    />
-  )
-}
