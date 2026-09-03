@@ -1,4 +1,5 @@
 import type { BrowserBookmark, BrowserTab, QuickLink } from './types'
+import type { BookmarkNodeInput } from './bookmark-catalog'
 
 export const defaultQuickLinks: QuickLink[] = [
   { id: 'github', title: 'GitHub', url: 'https://github.com', label: 'GH' },
@@ -48,4 +49,62 @@ export const demoBookmarks: BrowserBookmark[] = [
   { id: 'b3', title: 'shadcn/ui', url: 'https://ui.shadcn.com', parentId: 'demo-folder-design', index: 0, folderPath: '书签栏 / 设计', dateAdded: Date.now() - 180_000, unmodifiable: false },
   { id: 'b4', title: 'arXiv', url: 'https://arxiv.org', parentId: 'demo-folder-research', index: 0, folderPath: '书签栏 / 研究', dateAdded: Date.now() - 240_000, unmodifiable: false },
   { id: 'b5', title: 'Google Scholar', url: 'https://scholar.google.com', parentId: 'demo-folder-research', index: 1, folderPath: '书签栏 / 研究', dateAdded: Date.now() - 300_000, unmodifiable: false },
+]
+
+export const demoBookmarkTree: BookmarkNodeInput[] = [
+  {
+    id: '0',
+    title: '',
+    children: [
+      {
+        id: '1',
+        title: '书签栏',
+        index: 0,
+        folderType: 'bookmarks-bar',
+        children: [
+          {
+            id: 'demo-folder-dev',
+            parentId: '1',
+            title: '开发',
+            index: 0,
+            children: demoBookmarks
+              .filter((bookmark) => bookmark.parentId === 'demo-folder-dev')
+              .map((bookmark) => ({ ...bookmark })),
+          },
+          {
+            id: 'demo-folder-design',
+            parentId: '1',
+            title: '设计',
+            index: 1,
+            children: demoBookmarks
+              .filter((bookmark) => bookmark.parentId === 'demo-folder-design')
+              .map((bookmark) => ({ ...bookmark })),
+          },
+          {
+            id: 'demo-folder-research',
+            parentId: '1',
+            title: '研究',
+            index: 2,
+            children: demoBookmarks
+              .filter((bookmark) => bookmark.parentId === 'demo-folder-research')
+              .map((bookmark) => ({ ...bookmark })),
+          },
+          {
+            id: 'demo-folder-empty',
+            parentId: '1',
+            title: '稍后整理',
+            index: 3,
+            children: [],
+          },
+        ],
+      },
+      {
+        id: '2',
+        title: '其他书签',
+        index: 1,
+        folderType: 'other',
+        children: [],
+      },
+    ],
+  },
 ]

@@ -148,7 +148,8 @@ export function Dashboard({ view, onNavigate }: DashboardProps) {
   }, [commandOpen])
 
   const tabs = tabsQuery.data ?? []
-  const bookmarks = bookmarksQuery.data ?? []
+  const bookmarkCatalog = bookmarksQuery.data ?? { folders: [], bookmarks: [] }
+  const bookmarks = bookmarkCatalog.bookmarks
   const workspaces = workspacesQuery.data ?? []
   const quickLinks = quickLinksQuery.data ?? []
   const todos = todosQuery.data ?? []

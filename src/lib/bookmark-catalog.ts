@@ -12,7 +12,7 @@ export interface BookmarkNodeInput {
   index?: number
   dateAdded?: number
   folderType?: string
-  unmodifiable?: string
+  unmodifiable?: string | boolean
   children?: BookmarkNodeInput[]
 }
 

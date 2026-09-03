@@ -1,7 +1,13 @@
-import { demoBookmarks, demoTabs } from './demo-data'
-import type { BrowserBookmark, BrowserTab } from './types'
+import { normalizeBookmarkCatalog } from './bookmark-catalog'
+import type { BookmarkNodeInput } from './bookmark-catalog'
+import { countImportedNodes } from './bookmark-html'
+import type { ImportedBookmarkNode } from './bookmark-html'
+import { demoBookmarkTree, demoTabs } from './demo-data'
+import type { BrowserBookmarkCatalog, BrowserTab } from './types'
 
 const NO_GROUP = -1
+let previewBookmarkSequence = 1_000
+const previewBookmarkTree = structuredClone(demoBookmarkTree)
 
 export function hasChromeRuntime() {
   return typeof chrome !== 'undefined' && Boolean(chrome.runtime?.id) && Boolean(chrome.tabs)
@@ -58,35 +64,172 @@ export async function queryLiveTabs(): Promise<BrowserTab[]> {
     .filter((tab) => !tab.incognito)
 }
 
-export async function queryBookmarks(): Promise<BrowserBookmark[]> {
-  if (!hasChromeRuntime() || !chrome.bookmarks?.getTree) return demoBookmarks
+export async function queryBookmarks(): Promise<BrowserBookmarkCatalog> {
+  if (!hasChromeRuntime() || !chrome.bookmarks?.getTree) {
+    return normalizeBookmarkCatalog(previewBookmarkTree)
+  }
 
-  const roots = await chrome.bookmarks.getTree()
-  const rows: BrowserBookmark[] = []
+  return normalizeBookmarkCatalog(await chrome.bookmarks.getTree())
+}
 
-  const visit = (nodes: chrome.bookmarks.BookmarkTreeNode[], path: string[]) => {
-    for (const node of nodes) {
-      if (node.url) {
-        rows.push({
-          id: node.id,
-          title: node.title?.trim() || node.url,
-          url: node.url,
-          parentId: node.parentId ?? '',
-          index: node.index ?? 0,
-          folderPath: path.filter(Boolean).join(' / ') || '书签',
-          dateAdded: node.dateAdded,
-          unmodifiable: Boolean(node.unmodifiable),
-        })
-        continue
-      }
+function findPreviewNode(
+  id: string,
+  nodes: BookmarkNodeInput[] = previewBookmarkTree,
+): { node: BookmarkNodeInput; siblings: BookmarkNodeInput[] } | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return { node, siblings: nodes }
+    const found = findPreviewNode(id, node.children ?? [])
+    if (found) return found
+  }
+}
 
-      const nextPath = node.title ? [...path, node.title] : path
-      if (node.children?.length) visit(node.children, nextPath)
+function reindex(nodes: BookmarkNodeInput[]) {
+  nodes.forEach((node, index) => {
+    node.index = index
+  })
+}
+
+export async function updateBookmark(
+  id: string,
+  patch: { title: string; url: string },
+): Promise<void> {
+  if (hasChromeRuntime() && chrome.bookmarks?.update) {
+    await chrome.bookmarks.update(id, patch)
+    return
+  }
+
+  const match = findPreviewNode(id)
+  if (!match?.node.url) throw new Error('找不到可编辑的书签')
+  match.node.title = patch.title
+  match.node.url = patch.url
+}
+
+export async function moveBookmark(
+  id: string,
+  destination: { parentId: string; index: number },
+): Promise<void> {
+  if (hasChromeRuntime() && chrome.bookmarks?.move) {
+    await chrome.bookmarks.move(id, destination)
+    return
+  }
+
+  const match = findPreviewNode(id)
+  const parent = findPreviewNode(destination.parentId)?.node
+  if (!match || !parent || parent.url) throw new Error('找不到书签或目标文件夹')
+
+  const sourceIndex = match.siblings.indexOf(match.node)
+  match.siblings.splice(sourceIndex, 1)
+  reindex(match.siblings)
+
+  const children = parent.children ?? (parent.children = [])
+  const index = Math.max(0, Math.min(destination.index, children.length))
+  match.node.parentId = parent.id
+  children.splice(index, 0, match.node)
+  reindex(children)
+}
+
+export interface BookmarkImportAdapter {
+  create(details: {
+    title: string
+    parentId?: string
+    url?: string
+  }): Promise<{ id: string }>
+  removeTree(id: string): Promise<void>
+}
+
+export async function runBookmarkImport(
+  nodes: ImportedBookmarkNode[],
+  adapter: BookmarkImportAdapter,
+  onProgress: (done: number, total: number) => void,
+  now = new Date(),
+): Promise<string> {
+  const total = countImportedNodes(nodes)
+  let done = 0
+  let rootId: string | undefined
+  onProgress(done, total)
+
+  const createNodes = async (
+    children: ImportedBookmarkNode[],
+    parentId: string,
+  ) => {
+    for (const child of children) {
+      const created = await adapter.create({
+        title: child.title,
+        parentId,
+        ...(child.kind === 'bookmark' ? { url: child.url } : {}),
+      })
+      done += 1
+      onProgress(done, total)
+      if (child.kind === 'folder') await createNodes(child.children, created.id)
     }
   }
 
-  visit(roots, [])
-  return rows
+  try {
+    rootId = (
+      await adapter.create({
+        title: `导入的书签 · ${now.toISOString().slice(0, 10)}`,
+      })
+    ).id
+    await createNodes(nodes, rootId)
+    return rootId
+  } catch (error) {
+    if (rootId) {
+      try {
+        await adapter.removeTree(rootId)
+      } catch {
+        // Preserve the original import error when rollback also fails.
+      }
+    }
+    throw error
+  }
+}
+
+const chromeBookmarkImportAdapter: BookmarkImportAdapter = {
+  async create(details) {
+    return chrome.bookmarks.create(details)
+  },
+  async removeTree(id) {
+    await chrome.bookmarks.removeTree(id)
+  },
+}
+
+const previewBookmarkImportAdapter: BookmarkImportAdapter = {
+  async create(details) {
+    const parent = details.parentId
+      ? findPreviewNode(details.parentId)?.node
+      : findPreviewNode('2')?.node
+    if (!parent || parent.url) throw new Error('找不到导入目标文件夹')
+
+    const children = parent.children ?? (parent.children = [])
+    const node: BookmarkNodeInput = {
+      id: `preview-${previewBookmarkSequence++}`,
+      title: details.title,
+      parentId: parent.id,
+      index: children.length,
+      ...(details.url ? { url: details.url } : { children: [] }),
+    }
+    children.push(node)
+    return { id: node.id }
+  },
+  async removeTree(id) {
+    const match = findPreviewNode(id)
+    if (!match) return
+    match.siblings.splice(match.siblings.indexOf(match.node), 1)
+    reindex(match.siblings)
+  },
+}
+
+export async function importBookmarkNodes(
+  nodes: ImportedBookmarkNode[],
+  onProgress: (done: number, total: number) => void,
+) {
+  return runBookmarkImport(
+    nodes,
+    hasChromeRuntime()
+      ? chromeBookmarkImportAdapter
+      : previewBookmarkImportAdapter,
+    onProgress,
+  )
 }
 
 export function subscribeToTabChanges(onChange: () => void) {
