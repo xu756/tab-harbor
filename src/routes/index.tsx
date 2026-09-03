@@ -1,28 +1,31 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Dashboard } from '../components/dashboard'
-import type { WorkspaceView } from '../lib/types'
+import { legacyViewPath, pathForView } from '../lib/app-routes'
 
 interface DashboardSearch {
-  view: WorkspaceView
+  view?: string
+  surface?: 'sidepanel'
 }
-
-const views: WorkspaceView[] = ['home', 'tabs', 'bookmarks', 'workspaces']
 
 export const Route = createFileRoute('/')({
   validateSearch: (search: Record<string, unknown>): DashboardSearch => ({
-    view: views.includes(search.view as WorkspaceView) ? (search.view as WorkspaceView) : 'home',
+    view: typeof search.view === 'string' ? search.view : undefined,
+    surface: search.surface === 'sidepanel' ? 'sidepanel' : undefined,
   }),
+  beforeLoad: ({ search }) => {
+    const to = legacyViewPath(search.view)
+    if (to) throw redirect({ to, replace: true })
+  },
   component: DashboardRoute,
 })
 
 function DashboardRoute() {
-  const search = Route.useSearch()
   const navigate = Route.useNavigate()
 
   return (
     <Dashboard
-      view={search.view}
-      onNavigate={(view) => navigate({ search: { view }, replace: true })}
+      view="home"
+      onNavigate={(view) => navigate({ to: pathForView(view) })}
     />
   )
 }
