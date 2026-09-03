@@ -17,6 +17,27 @@ export interface BookmarkFolderNode {
   bookmarkCount: number
 }
 
+interface BookmarkTreeRowBase {
+  id: string
+  label: string
+  depth: number
+  parentId?: string
+}
+
+export interface BookmarkFolderRow extends BookmarkTreeRowBase {
+  kind: 'folder'
+  folder: BookmarkFolderNode
+  expanded: boolean
+  hasChildren: boolean
+}
+
+export interface BookmarkLeafRow extends BookmarkTreeRowBase {
+  kind: 'bookmark'
+  bookmark: BrowserBookmark
+}
+
+export type BookmarkTreeRow = BookmarkFolderRow | BookmarkLeafRow
+
 export function buildBookmarkTree(
   bookmarks: BrowserBookmark[],
 ): BookmarkFolderNode[] {
@@ -75,4 +96,92 @@ export function buildBookmarkTree(
   }
 
   return roots
+}
+
+export function getInitialExpandedFolderIds(tree: BookmarkFolderNode[]) {
+  return new Set(tree.map((folder) => folder.id))
+}
+
+export function flattenBookmarkTree(
+  tree: BookmarkFolderNode[],
+  expanded: ReadonlySet<string>,
+  search: string,
+): BookmarkTreeRow[] {
+  const query = search.trim().toLowerCase()
+  if (query) {
+    return tree.flatMap((folder) => flattenMatchingFolder(folder, query))
+  }
+
+  const rows: BookmarkTreeRow[] = []
+
+  const visitFolder = (folder: BookmarkFolderNode, parentId?: string) => {
+    const isExpanded = expanded.has(folder.id)
+    rows.push({
+      kind: 'folder',
+      id: folder.id,
+      label: folder.name,
+      depth: folder.depth,
+      parentId,
+      folder,
+      expanded: isExpanded,
+      hasChildren: folder.folders.length > 0 || folder.bookmarks.length > 0,
+    })
+
+    if (!isExpanded) return
+    for (const child of folder.folders) visitFolder(child, folder.id)
+    for (const leaf of folder.bookmarks) {
+      rows.push({
+        kind: 'bookmark',
+        id: leaf.id,
+        label: leaf.bookmark.title,
+        depth: folder.depth + 1,
+        parentId: folder.id,
+        bookmark: leaf.bookmark,
+      })
+    }
+  }
+
+  for (const folder of tree) visitFolder(folder)
+  return rows
+}
+
+function flattenMatchingFolder(
+  folder: BookmarkFolderNode,
+  query: string,
+  parentId?: string,
+): BookmarkTreeRow[] {
+  const childRows = folder.folders.flatMap((child) =>
+    flattenMatchingFolder(child, query, folder.id),
+  )
+  const bookmarkRows: BookmarkLeafRow[] = folder.bookmarks
+    .filter(({ bookmark }) =>
+      `${bookmark.title} ${bookmark.url} ${bookmark.folderPath}`
+        .toLowerCase()
+        .includes(query),
+    )
+    .map(({ id, bookmark }) => ({
+      kind: 'bookmark',
+      id,
+      label: bookmark.title,
+      depth: folder.depth + 1,
+      parentId: folder.id,
+      bookmark,
+    }))
+
+  if (childRows.length === 0 && bookmarkRows.length === 0) return []
+
+  return [
+    {
+      kind: 'folder',
+      id: folder.id,
+      label: folder.name,
+      depth: folder.depth,
+      parentId,
+      folder,
+      expanded: true,
+      hasChildren: true,
+    },
+    ...childRows,
+    ...bookmarkRows,
+  ]
 }
