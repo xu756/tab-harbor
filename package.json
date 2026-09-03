@@ -6,6 +6,7 @@
   "packageManager": "bun@1.2.21",
   "scripts": {
     "dev": "vite dev",
+    "test": "bun test",
     "build": "vite build && tsc --noEmit",
     "build:extension": "bun run build",
     "typecheck": "tsc --noEmit",
@@ -29,6 +30,7 @@
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
+    "linkedom": "^0.18.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.4"
   }
