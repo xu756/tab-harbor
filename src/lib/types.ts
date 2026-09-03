@@ -21,8 +21,28 @@ export interface BrowserBookmark {
   id: string
   title: string
   url: string
+  parentId: string
+  index: number
   folderPath: string
   dateAdded?: number
+  unmodifiable: boolean
+}
+
+export interface BrowserBookmarkFolder {
+  id: string
+  title: string
+  parentId?: string
+  index: number
+  folderType?: string
+  unmodifiable: boolean
+  path: string[]
+  children: BrowserBookmarkFolder[]
+  bookmarkCount: number
+}
+
+export interface BrowserBookmarkCatalog {
+  folders: BrowserBookmarkFolder[]
+  bookmarks: BrowserBookmark[]
 }
 
 export interface SavedTab {

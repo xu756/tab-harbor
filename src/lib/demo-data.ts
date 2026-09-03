@@ -43,9 +43,9 @@ export const demoTabs: BrowserTab[] = demoRows.map(([title, url, groupTitle], in
 }))
 
 export const demoBookmarks: BrowserBookmark[] = [
-  { id: 'b1', title: 'TanStack Router', url: 'https://tanstack.com/router/latest', folderPath: '书签栏 / 开发', dateAdded: Date.now() - 60_000 },
-  { id: 'b2', title: 'Chrome Extensions', url: 'https://developer.chrome.com/docs/extensions', folderPath: '书签栏 / 开发', dateAdded: Date.now() - 120_000 },
-  { id: 'b3', title: 'shadcn/ui', url: 'https://ui.shadcn.com', folderPath: '书签栏 / 设计', dateAdded: Date.now() - 180_000 },
-  { id: 'b4', title: 'arXiv', url: 'https://arxiv.org', folderPath: '书签栏 / 研究', dateAdded: Date.now() - 240_000 },
-  { id: 'b5', title: 'Google Scholar', url: 'https://scholar.google.com', folderPath: '书签栏 / 研究', dateAdded: Date.now() - 300_000 },
+  { id: 'b1', title: 'TanStack Router', url: 'https://tanstack.com/router/latest', parentId: 'demo-folder-dev', index: 0, folderPath: '书签栏 / 开发', dateAdded: Date.now() - 60_000, unmodifiable: false },
+  { id: 'b2', title: 'Chrome Extensions', url: 'https://developer.chrome.com/docs/extensions', parentId: 'demo-folder-dev', index: 1, folderPath: '书签栏 / 开发', dateAdded: Date.now() - 120_000, unmodifiable: false },
+  { id: 'b3', title: 'shadcn/ui', url: 'https://ui.shadcn.com', parentId: 'demo-folder-design', index: 0, folderPath: '书签栏 / 设计', dateAdded: Date.now() - 180_000, unmodifiable: false },
+  { id: 'b4', title: 'arXiv', url: 'https://arxiv.org', parentId: 'demo-folder-research', index: 0, folderPath: '书签栏 / 研究', dateAdded: Date.now() - 240_000, unmodifiable: false },
+  { id: 'b5', title: 'Google Scholar', url: 'https://scholar.google.com', parentId: 'demo-folder-research', index: 1, folderPath: '书签栏 / 研究', dateAdded: Date.now() - 300_000, unmodifiable: false },
 ]

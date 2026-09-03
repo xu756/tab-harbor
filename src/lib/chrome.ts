@@ -71,8 +71,11 @@ export async function queryBookmarks(): Promise<BrowserBookmark[]> {
           id: node.id,
           title: node.title?.trim() || node.url,
           url: node.url,
+          parentId: node.parentId ?? '',
+          index: node.index ?? 0,
           folderPath: path.filter(Boolean).join(' / ') || '书签',
           dateAdded: node.dateAdded,
+          unmodifiable: Boolean(node.unmodifiable),
         })
         continue
       }
