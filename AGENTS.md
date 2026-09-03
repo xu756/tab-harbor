@@ -12,9 +12,9 @@ Tab Harbor is a calm, local-first browser workspace. The product is a Chrome new
 
 ## Frontend architecture
 
-The v2 branch is a TanStack Start SPA built for Manifest V3.
+The current project is a client-only Vite SPA built for Manifest V3. It does not use SSR or hydration.
 
-- TanStack Start: application shell/build pipeline in SPA mode.
+- Vite: application shell and extension build pipeline.
 - TanStack Router: type-safe URL/search state.
 - TanStack Query: Chrome API and local persistence queries/mutations.
 - TanStack Store: transient UI state.
@@ -22,7 +22,9 @@ The v2 branch is a TanStack Start SPA built for Manifest V3.
 - TanStack Form: workspace forms.
 - React 19 + TypeScript + Vite.
 
-Source lives in `src/`; extension static assets live in `public/`. `bun run build` produces the unpacked extension client in `dist/client`.
+Source lives in `src/`; extension static assets live in `public/`. `bun run build` produces the unpacked extension in `dist/`.
+
+Extension pages use hash history so the physical `index.html` path is not interpreted as an application route.
 
 ## Chrome constraints
 
@@ -46,8 +48,9 @@ Before merging a UI change:
 
 ```bash
 bun install
+bun run test
 bun run typecheck
 bun run build
 ```
 
-Then load `dist/client` as an unpacked Chrome extension and verify the new-tab override and side panel.
+Then load `dist/` as an unpacked Chrome extension and verify the new-tab override and side panel.

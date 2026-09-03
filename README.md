@@ -56,15 +56,14 @@ bun run dev
 
 ```bash
 bun run typecheck
+bun run test
 bun run build
 ```
 
-Load `dist/client` as an unpacked extension from `chrome://extensions`.
+Load `dist/` as an unpacked extension from `chrome://extensions`.
 
 Verify the new-tab override, Manifest V3 CSP, live tabs/groups, bookmarks, local persistence, themes, and side panel before merging.
 
 ## Later
 
 Authentication, cloud sync, device sessions, Send to Device, Inbox, and sync conflict handling remain a separate next-stage layer.
-
-Current refactor branch: `refactor/tanstack-start`.

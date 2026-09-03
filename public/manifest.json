@@ -5,7 +5,14 @@
   "version": "2.0.0",
   "description": "A calm local-first workspace for tabs, bookmarks, quick links, todos and saved sessions.",
   "homepage_url": "https://github.com/xu756/tab-harbor",
-  "permissions": ["tabs", "tabGroups", "storage", "sidePanel", "bookmarks", "favicon"],
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "storage",
+    "sidePanel",
+    "bookmarks",
+    "favicon"
+  ],
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
@@ -13,7 +20,7 @@
     "service_worker": "background.js"
   },
   "side_panel": {
-    "default_path": "index.html?surface=sidepanel"
+    "default_path": "index.html#/?surface=sidepanel"
   },
   "action": {
     "default_title": "打开 Harbor",

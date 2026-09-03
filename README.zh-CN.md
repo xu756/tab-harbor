@@ -66,13 +66,14 @@ bun run dev
 
 ```bash
 bun run typecheck
+bun run test
 bun run build
 ```
 
 然后在 `chrome://extensions` 打开开发者模式，加载：
 
 ```text
-dist/client
+dist/
 ```
 
 重点验证：
@@ -87,9 +88,3 @@ dist/client
 ## 后续
 
 账号、Cloud Sync、多设备 Session、Send to Device、Inbox 和同步冲突处理仍属于下一阶段；本分支先把本地产品体验和数据模型做稳定。
-
-当前重构分支：
-
-```text
-refactor/tanstack-start
-```
