@@ -1,6 +1,7 @@
 import { defaultQuickLinks } from './demo-data'
 import type {
   BrowserTab,
+  HarborBackupData,
   MockUserSession,
   QuickLink,
   SavedTab,
@@ -8,6 +9,7 @@ import type {
   UserPreferences,
   Workspace,
 } from './types'
+
 import { hasChromeRuntime } from './chrome'
 
 const WORKSPACES_KEY = 'harbor.workspaces.v3'
@@ -232,4 +234,85 @@ export async function mockTriggerSync(): Promise<{ success: boolean; syncedAt: s
   }
   return { success: true, syncedAt }
 }
+
+export async function exportHarborBackup(): Promise<HarborBackupData> {
+  const [workspaces, quickLinks, todos, preferences] = await Promise.all([
+    listWorkspaces(),
+    listQuickLinks(),
+    listTodos(),
+    getPreferences(),
+  ])
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    workspaces,
+    quickLinks,
+    todos,
+    preferences,
+  }
+}
+
+export async function importHarborBackup(
+  data: HarborBackupData,
+  mode: 'merge' | 'replace',
+): Promise<{ success: boolean; workspacesCount: number; quickLinksCount: number; todosCount: number }> {
+  if (!data || data.version !== 1 || !Array.isArray(data.workspaces) || !Array.isArray(data.quickLinks)) {
+    throw new Error('无效的备份文件格式。')
+  }
+
+  if (mode === 'replace') {
+    await writeValue(WORKSPACES_KEY, data.workspaces)
+    await writeValue(QUICK_LINKS_KEY, data.quickLinks)
+    await writeValue(TODOS_KEY, data.todos ?? [])
+    if (data.preferences) {
+      await writeValue(PREFERENCES_KEY, data.preferences)
+    }
+    return {
+      success: true,
+      workspacesCount: data.workspaces.length,
+      quickLinksCount: data.quickLinks.length,
+      todosCount: (data.todos ?? []).length,
+    }
+  }
+
+  // Merge mode: merge by ID
+  const [currentWorkspaces, currentQuickLinks, currentTodos, currentPrefs] = await Promise.all([
+    listWorkspaces(),
+    listQuickLinks(),
+    listTodos(),
+    getPreferences(),
+  ])
+
+  const existingWsIds = new Set(currentWorkspaces.map((w) => w.id))
+  const newWorkspaces = [...currentWorkspaces, ...data.workspaces.filter((w) => !existingWsIds.has(w.id))]
+
+  const existingQlIds = new Set(currentQuickLinks.map((q) => q.id))
+  const newQuickLinks = [...currentQuickLinks, ...data.quickLinks.filter((q) => !existingQlIds.has(q.id))]
+
+  const existingTdIds = new Set(currentTodos.map((t) => t.id))
+  const newTodos = [...currentTodos, ...(data.todos ?? []).filter((t) => !existingTdIds.has(t.id))]
+
+  await writeValue(WORKSPACES_KEY, newWorkspaces)
+  await writeValue(QUICK_LINKS_KEY, newQuickLinks)
+  await writeValue(TODOS_KEY, newTodos)
+  if (data.preferences) {
+    await writeValue(PREFERENCES_KEY, { ...currentPrefs, ...data.preferences })
+  }
+
+  return {
+    success: true,
+    workspacesCount: newWorkspaces.length,
+    quickLinksCount: newQuickLinks.length,
+    todosCount: newTodos.length,
+  }
+}
+
+export async function resetAllData() {
+  await writeValue(WORKSPACES_KEY, [])
+  await writeValue(QUICK_LINKS_KEY, defaultQuickLinks)
+  await writeValue(TODOS_KEY, [])
+  await writeValue(PREFERENCES_KEY, DEFAULT_PREFERENCES)
+  await writeValue(AUTH_SESSION_KEY, DEFAULT_SESSION)
+}
+
 
