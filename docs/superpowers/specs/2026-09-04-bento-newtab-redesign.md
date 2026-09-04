@@ -72,7 +72,13 @@ Located in `src/features/home/components/`:
   - Smart greeting based on current hour (`夜深了` / `早上好` / `中午好` / `下午好` / `晚上好`).
 - **`OmniSearch`**:
   - Pill-shaped search box with glass background and prominent focus ring.
-  - Search engine dropdown selector: Google (default), Baidu, Bing, DuckDuckGo, GitHub. Engine selection is stored in `chrome.storage.local`.
+  - Search engine dropdown selector:
+    - Google: `https://www.google.com/search?q={query}` (default)
+    - Baidu: `https://www.baidu.com/s?wd={query}`
+    - Bing: `https://www.bing.com/search?q={query}`
+    - DuckDuckGo: `https://duckduckgo.com/?q={query}`
+    - GitHub: `https://github.com/search?q={query}`
+    - Engine preference is stored in `chrome.storage.local`.
   - URL detection: If input matches URL pattern (`http://`, `https://`, `localhost`, or `domain.tld`), direct navigation occurs upon pressing Enter. Otherwise, queries the chosen engine.
   - Shortcut key `/` globally focuses the input field.
 
