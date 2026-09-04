@@ -378,7 +378,7 @@ export function BookmarkOrganizer({ catalog, loading, onOpen, onUpdate, onMove, 
                           </div>
                         ) : (
                           <Button variant="ghost" className="h-11 min-w-0 flex-1 justify-start rounded-none px-1 text-left hover:bg-transparent" onClick={() => void onOpen(bookmark)} title={`在新标签页打开 ${bookmark.title}`}>
-                            <span className="min-w-0 leading-tight"><strong className="block truncate text-sm font-medium">{bookmark.title}</strong><span className="block truncate text-xs font-normal text-muted-foreground">{bookmark.url}</span></span>
+                            <strong className="block min-w-0 truncate text-sm font-medium">{bookmark.title}</strong>
                           </Button>
                         )}
                         <div className="flex shrink-0 gap-1">

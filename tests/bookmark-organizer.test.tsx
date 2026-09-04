@@ -46,7 +46,7 @@ test('renders the two-pane bookmark organizer and its management controls', () =
   expect(html).toContain('aria-label="书签列表"')
   expect(html).toContain('书签栏')
   expect(html).toContain('TanStack Router')
-  expect(html).toContain('https://tanstack.com/router')
+  expect(html).not.toContain('https://tanstack.com/router')
   expect(html).toContain('编辑书签')
   expect(html).toContain('移动到…')
   expect(html).toContain('导入 HTML')
