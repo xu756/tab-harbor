@@ -11,8 +11,22 @@ test('renders HeroClock with localized date and time display', () => {
   expect(html).toContain('9月4日')
 })
 
-test('renders OmniSearch with search input and engine selection', () => {
-  const html = renderToStaticMarkup(<OmniSearch />)
-  expect(html).toContain('placeholder="搜索网页或输入网址…"')
-  expect(html).toContain('Google')
+test('renders HeroClock with 12-hour format and hidden seconds', () => {
+  const html = renderToStaticMarkup(
+    <HeroClock
+      fixedDate={new Date('2026-09-04T15:45:30')}
+      clockFormat="12h"
+      showSeconds={false}
+    />,
+  )
+  expect(html).toContain('03')
+  expect(html).toContain('45')
+  expect(html).toContain('PM')
+  expect(html).not.toContain(':30')
 })
+
+test('renders OmniSearch with custom default engine', () => {
+  const html = renderToStaticMarkup(<OmniSearch defaultEngine="baidu" />)
+  expect(html).toContain('百度')
+})
+

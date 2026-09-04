@@ -16,9 +16,16 @@ import {
   resolveSearchOrUrl,
 } from '@/lib/search-engines'
 
-export function OmniSearch({ onSearch }: { onSearch?: (url: string) => void }) {
+export interface OmniSearchProps {
+  onSearch?: (url: string) => void
+  defaultEngine?: SearchEngineId
+  onEngineChange?: (engine: SearchEngineId) => void
+}
+
+export function OmniSearch({ onSearch, defaultEngine, onEngineChange }: OmniSearchProps) {
   const [query, setQuery] = useState('')
   const [engine, setEngine] = useState<SearchEngineId>(() => {
+    if (defaultEngine && SEARCH_ENGINES[defaultEngine]) return defaultEngine
     try {
       const saved = localStorage.getItem('harbor_search_engine') as SearchEngineId
       return saved && SEARCH_ENGINES[saved] ? saved : DEFAULT_SEARCH_ENGINE_ID
@@ -28,6 +35,12 @@ export function OmniSearch({ onSearch }: { onSearch?: (url: string) => void }) {
   })
 
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (defaultEngine && SEARCH_ENGINES[defaultEngine]) {
+      setEngine(defaultEngine)
+    }
+  }, [defaultEngine])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -46,12 +59,14 @@ export function OmniSearch({ onSearch }: { onSearch?: (url: string) => void }) {
 
   const selectEngine = (id: SearchEngineId) => {
     setEngine(id)
+    onEngineChange?.(id)
     try {
       localStorage.setItem('harbor_search_engine', id)
     } catch {
       // safe fallback
     }
   }
+
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()

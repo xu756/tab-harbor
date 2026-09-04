@@ -9,7 +9,17 @@ export function getGreeting(hour: number): string {
   return '晚上好'
 }
 
-export function HeroClock({ fixedDate }: { fixedDate?: Date }) {
+export interface HeroClockProps {
+  fixedDate?: Date
+  clockFormat?: '24h' | '12h'
+  showSeconds?: boolean
+}
+
+export function HeroClock({
+  fixedDate,
+  clockFormat = '24h',
+  showSeconds = true,
+}: HeroClockProps) {
   const [now, setNow] = useState(() => fixedDate ?? new Date())
 
   useEffect(() => {
@@ -18,9 +28,12 @@ export function HeroClock({ fixedDate }: { fixedDate?: Date }) {
     return () => clearInterval(timer)
   }, [fixedDate])
 
-  const hours = String(now.getHours()).padStart(2, '0')
+  const rawHours = now.getHours()
+  const displayHours = clockFormat === '12h' ? rawHours % 12 || 12 : rawHours
+  const hours = String(displayHours).padStart(2, '0')
   const minutes = String(now.getMinutes()).padStart(2, '0')
   const seconds = String(now.getSeconds()).padStart(2, '0')
+  const period = clockFormat === '12h' ? (rawHours >= 12 ? 'PM' : 'AM') : null
   const dateStr = new Intl.DateTimeFormat('zh-CN', {
     month: 'long',
     day: 'numeric',
@@ -35,10 +48,18 @@ export function HeroClock({ fixedDate }: { fixedDate?: Date }) {
         <span>{hours}</span>
         <span className="animate-pulse text-muted-foreground/60">:</span>
         <span>{minutes}</span>
-        <span className="hidden sm:inline text-3xl sm:text-4xl text-muted-foreground/50 font-normal ml-2">
-          :{seconds}
-        </span>
+        {showSeconds && (
+          <span className="hidden sm:inline text-3xl sm:text-4xl text-muted-foreground/50 font-normal ml-2">
+            :{seconds}
+          </span>
+        )}
+        {period && (
+          <span className="text-xl sm:text-2xl text-muted-foreground/60 font-medium ml-2 uppercase">
+            {period}
+          </span>
+        )}
       </div>
+
 
       <div className="mt-3 flex items-center justify-center gap-2 text-sm sm:text-base font-medium text-muted-foreground">
         <span>{dateStr}</span>
