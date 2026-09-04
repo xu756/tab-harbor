@@ -42,6 +42,8 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { SettingsDialog } from '@/features/settings/settings-dialog'
+
 import {
   closeTabs,
   openUrlInNewTab,
@@ -325,7 +327,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           workspaces={workspaces}
           onSave={setSaveCandidate}
         />
+        <SettingsDialog />
       </AppContext.Provider>
+
     </TooltipProvider>
   )
 }

@@ -2,22 +2,26 @@ import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   Bookmark,
   CircleUserRound,
+  Cloud,
   Command,
   Layers3,
   LayoutGrid,
   Monitor,
   Moon,
+  Settings,
   SquareStack,
   Sun,
   Waves,
 } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useApp } from '@/features/app/app-provider'
 import { navigationItems } from '@/lib/app-routes'
+import type { MockUserSession } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { cycleTheme, setCommandOpen, useUiStore } from '@/state/ui-store'
+import { cycleTheme, setCommandOpen, setSettingsOpen, useUiStore } from '@/state/ui-store'
+
 
 const icons = {
   home: LayoutGrid,
@@ -26,9 +30,67 @@ const icons = {
   workspaces: Layers3,
 }
 
+export function AccountBadge({
+  session,
+  onClick,
+}: {
+  session: MockUserSession
+  onClick: () => void
+}) {
+  if (session.isLoggedIn && session.user) {
+    const initial = session.user.name?.slice(0, 1).toUpperCase() || 'U'
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClick}
+              className="hidden h-8 gap-1.5 px-2.5 sm:flex rounded-xl font-normal text-xs"
+              aria-label="打开账户与设置"
+            >
+              <span className="size-4.5 rounded-full bg-primary text-[0.62rem] text-primary-foreground font-semibold grid place-items-center shrink-0">
+                {initial}
+              </span>
+              <span className="max-w-24 truncate font-medium text-foreground">
+                {session.user.name}
+              </span>
+              <Cloud className="size-3 text-emerald-500 shrink-0" />
+            </Button>
+          }
+        />
+        <TooltipContent>已登录：{session.user.email} (点击打开设置)</TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClick}
+            className="hidden h-8 gap-1.5 px-2.5 sm:flex rounded-xl font-normal text-xs text-muted-foreground hover:text-foreground"
+            aria-label="打开偏好设置与账户"
+          >
+            <CircleUserRound className="size-3.5" />
+            <span>本地</span>
+            <Settings className="size-3 opacity-60 ml-0.5" />
+          </Button>
+        }
+      />
+      <TooltipContent>偏好设置与数据管理 (⌘,)</TooltipContent>
+    </Tooltip>
+  )
+}
+
 export function AppShell() {
   const theme = useUiStore((state) => state.theme)
   const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const { session } = useApp()
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
@@ -76,10 +138,11 @@ export function AppShell() {
               </TooltipTrigger>
               <TooltipContent>切换主题：{theme}</TooltipContent>
             </Tooltip>
-            <Badge variant="outline" className="hidden h-8 gap-1.5 px-2.5 sm:flex"><CircleUserRound />本地</Badge>
+            <AccountBadge session={session} onClick={() => setSettingsOpen(true)} />
           </div>
         </div>
       </header>
+
 
       <main key={pathname} className="mx-auto w-full max-w-[1560px] animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none">
         <Outlet />
