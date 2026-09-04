@@ -8,7 +8,7 @@ import {
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LiveTabsBento } from '../src/features/home/components/live-tabs-bento'
 import { WorkspacesBento } from '../src/features/home/components/workspaces-bento'
-import type { BrowserTab, WorkspaceItem } from '../src/lib/types'
+import type { BrowserTab, Workspace } from '../src/lib/types'
 
 async function renderWithRouter(component: React.ReactNode) {
   const rootRoute = createRootRoute({
@@ -27,15 +27,15 @@ const mockTabs: BrowserTab[] = [
   { id: 2, windowId: 10, title: 'GitHub PR', url: 'https://github.com', active: false, pinned: false, incognito: false },
 ]
 
-const mockWorkspaces: WorkspaceItem[] = [
+const mockWorkspaces: Workspace[] = [
   {
     id: 'w1',
     name: '开发环境',
     createdAt: Date.now(),
     updatedAt: Date.now(),
     tabs: [
-      { title: 'Doc', url: 'https://doc.local' },
-      { title: 'Repo', url: 'https://github.com' },
+      { id: 't1', title: 'Doc', url: 'https://doc.local', pinned: false, order: 0 },
+      { id: 't2', title: 'Repo', url: 'https://github.com', pinned: false, order: 1 },
     ],
   },
 ]

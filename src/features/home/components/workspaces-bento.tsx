@@ -5,11 +5,11 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SiteIcon } from '@/features/shared/site-icon'
 import { restoreUrls } from '@/lib/chrome'
-import type { WorkspaceItem } from '@/lib/types'
+import type { Workspace } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface WorkspacesBentoProps {
-  workspaces: WorkspaceItem[]
+  workspaces: Workspace[]
 }
 
 export function WorkspacesBento({ workspaces }: WorkspacesBentoProps) {
@@ -58,7 +58,7 @@ export function WorkspacesBento({ workspaces }: WorkspacesBentoProps) {
 
                   <div className="mt-1.5 flex items-center gap-1 overflow-hidden">
                     {ws.tabs.slice(0, 4).map((t, idx) => (
-                      <SiteIcon key={idx} title={t.title} url={t.url} className="size-3.5" />
+                      <SiteIcon key={idx} title={t.title} url={t.url} src={t.favIconUrl} />
                     ))}
                     {ws.tabs.length > 4 && (
                       <span className="text-[0.68rem] text-muted-foreground">+{ws.tabs.length - 4}</span>

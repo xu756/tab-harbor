@@ -61,7 +61,7 @@ export function LiveTabsBento({ tabs, onSaveWorkspace, loading }: LiveTabsBentoP
                   onClick={() => void activateTab(tab)}
                   className="flex min-w-0 flex-1 items-center gap-2 text-left truncate outline-none"
                 >
-                  <SiteIcon title={tab.title} url={tab.url} favIconUrl={tab.favIconUrl} />
+                  <SiteIcon title={tab.title} url={tab.url} src={tab.favIconUrl} />
                   <span className="truncate">{tab.title || '新标签页'}</span>
                 </button>
 
