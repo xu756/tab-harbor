@@ -1,127 +1,108 @@
-# Tab Harbor
+# Harbor
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[简体中文](./README.zh-CN.md)
 
-**A quiet Chrome new tab workspace for tabs, quick links, desk notes, saved sessions, and lightweight todos.**
+Harbor is a calm, local-first Chrome workspace for live tabs, Chrome bookmarks, quick links, todos, and saved workspaces. It replaces the Chrome new-tab page and is also available in the side panel.
 
-Tab Harbor turns Chrome's new tab page into a place where you can keep working. You immediately see what is already open, what should be saved for later, and what still needs your attention.
+The extension works without an account or backend. Browser data stays in Chrome, while Harbor's durable data is stored locally.
 
-<p align="center">
-  <img src="assets/readme/feature-tabs.png" alt="Tab Harbor overview" width="760">
-</p>
+## Features
 
-## ✨ Core Highlights
+- **Home** — web search, current tabs, editable quick links, todos, and recent workspaces.
+- **Tabs** — search regular Chrome tabs and native tab groups, select multiple tabs, close tabs, find duplicates, and save a selection as a workspace.
+- **Bookmarks** — browse the real Chrome bookmark tree in a two-pane explorer, search by title, URL, or folder, edit bookmarks, drag to reorder or move, choose a destination folder with the keyboard-accessible move action, and import or export bookmark HTML.
+- **Workspaces** — save durable local tab collections, then restore, rename, or delete them.
+- **Command menu** — press `Ctrl+K` or `⌘K` to find tabs, bookmarks, workspaces, and common actions.
+- **Side panel** — use the same application at a narrow browser width.
 
-- **Tabs are automatically organized by domain.** Tab Harbor groups open pages by domain, and moves homepage-style tabs into a dedicated `Homepages` group, so you can quickly see what you are actually working on.
-- **You can still organize things around your own workflow.** When domain-based grouping is not enough, you can create manual groups, keep common quick links around, and jump back to the right section from the top icon rail.
-- **Saved tabs now behave more like sessions.** You can choose what to save, add tabs to an existing saved session, restore them later, and keep the overview tidy with collapsed session groups when you do not need every tab in front of you.
-- **Todos stay close, but out of the way.** The drawer lets you create, edit, delete, search, and archive todos without leaving the page.
-- **It keeps getting calmer without getting heavier.** You can switch themes, tune transparency, adjust text and shortcut size, set a custom background, sleep inactive tabs, and clean duplicate tabs with one click, while everything still stays in `chrome.storage.local` with no backend or account.
+Bookmark folders are fully expanded on the first visit. Harbor then remembers the selected folder and expansion state. The bookmark list shows titles only during normal browsing; the URL appears when editing.
 
-## 🖼️ Feature Tour
+## Routes
 
-<table>
-  <tr>
-    <td width="33.33%" valign="top">
-      <strong>Unified tab management</strong><br><br>
-      <img src="assets/readme/feature-tabs.png" alt="Tabs" width="100%">
-    </td>
-    <td width="33.33%" valign="top">
-      <strong>Saved sessions</strong><br><br>
-      <img src="assets/readme/feature-saved-drawer.png" alt="Saved sessions drawer" width="100%">
-    </td>
-    <td width="33.33%" valign="top">
-      <strong>Todos and quick jumping</strong><br><br>
-      <img src="assets/readme/feature-todos.png" alt="Todos" width="100%">
-    </td>
-  </tr>
-</table>
+Harbor uses hash history because every extension surface loads the same physical `index.html` file.
 
-### Unified tab management
+| Route | Page |
+| --- | --- |
+| `#/` | Home |
+| `#/tabs` | Tabs |
+| `#/bookmarks` | Bookmarks |
+| `#/workspaces` | Workspaces |
 
-Tab Harbor organizes tabs more like a workspace: **domain-based groups, manual groups, quick access links, and fast jumping from the top icon rail**. If you want to clean up the browser a bit more, you can **also remove duplicate tabs with one click**.
+## Technology
 
-### Saved sessions
+- React 19 and TypeScript
+- Vite and Manifest V3
+- TanStack Router, Query, Store, Virtual, and Form
+- shadcn components built on Base UI
+- Tailwind CSS 4 and Lucide icons
+- Bun
 
-Pages you do not need right now can be **saved as sessions, added to an existing session, restored later, or kept collapsed for a quieter overview**.
+This is a client-only SPA. It does not use SSR or hydration, and extension pages do not load runtime code from a CDN.
 
-### Todos and quick jumping
+## Development
 
-Tab Harbor also works as a tiny action layer: jot down todos, keep short descriptions, archive completed items, and jump back into the right group from the same page.
+Requirements: a current Bun installation and a Chromium-based browser.
 
-### Theme switching
+```bash
+bun install
+bun run dev
+```
 
-When you want the page to feel more like your own workspace, you can **switch themes, tune transparency, adjust text and shortcut size, and use a custom background image**.
+The development server is available at `http://localhost:5173`. When Chrome extension APIs are unavailable, it uses representative demo tabs and bookmarks. Preview bookmark changes remain in memory until the page is reloaded; workspaces, quick links, and todos use the development origin's `localStorage`.
 
-<table>
-  <tr>
-    <td><img src="assets/readme/theme-warm-neutral.png" alt="warm neutral" width="100%"></td>
-    <td><img src="assets/readme/theme-soft-green.png" alt="soft green" width="100%"></td>
-  </tr>
-  <tr>
-    <td><img src="assets/readme/theme-soft-clay.png" alt="soft clay" width="100%"></td>
-    <td><img src="assets/readme/theme-custom-background.png" alt="custom background" width="100%"></td>
-  </tr>
-</table>
+## Build and install
 
-### Manual sleep control
+```bash
+bun run test
+bun run typecheck
+bun run build
+```
 
-When you want to slow a tab down without losing it, you can **sleep individual tabs or put an entire group to sleep from the workspace itself**.
+The production extension is written to `dist/`.
 
-## 🌊 Why It Feels Different
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Choose **Load unpacked**.
+4. Select this repository's `dist/` directory.
+5. Open a new tab and verify the side panel from the extension action.
 
-Most new tab pages try to be a search box, a wallpaper, or a speed dial. Tab Harbor is closer to a lightweight browser control room. It keeps the messy reality of browsing visible, but turns it into something calmer and more actionable.
+After another build, click **Reload** for Harbor on `chrome://extensions` before testing the updated files.
 
-That also means it is intentionally lightweight. There is no backend, no sync account, and no extra app to open. It lives exactly where the browsing chaos already happens.
+## Commands
 
-## ⚡ Quick Use
+| Command | Purpose |
+| --- | --- |
+| `bun run dev` | Start the browser preview |
+| `bun run test` | Run the test suite |
+| `bun run typecheck` | Check TypeScript types |
+| `bun run build` | Build and type-check the extension |
+| `bun run preview` | Preview the production build |
 
-### Install from the Chrome Web Store
+## Project layout
 
-The Chrome Web Store listing will be added here after review.
+```text
+src/
+  components/       shared shadcn UI and bookmark organizer
+  features/         application shell and route-level features
+  lib/              Chrome adapters, persistence, and domain helpers
+  routes/           TanStack Router route modules
+  state/            transient UI state
+  styles/           global theme and layout tokens
+public/              manifest, service worker, and extension icons
+docs/                architecture, bookmark, and design references
+```
 
-After installing it from the store, open a new tab in Chrome.
+See [Architecture](./docs/architecture.md), [Chrome bookmarks](./docs/bookmarks.md), [Design principles](./docs/design-principles.md), and [Privacy](./PRIVACY.md) for details.
 
-### Install with a coding agent
+## Chrome permissions
 
-1. Give your coding agent this repo:
+| Permission | Use |
+| --- | --- |
+| `tabs` | Read, activate, close, and restore regular tabs |
+| `tabGroups` | Read native Chrome tab-group metadata |
+| `bookmarks` | Read and perform user-requested bookmark edits, moves, imports, and exports |
+| `storage` | Store Harbor workspaces, quick links, and todos locally |
+| `sidePanel` | Provide the secondary side-panel surface |
+| `favicon` | Display site identity without fetching a separate remote asset |
 
-   ```text
-   https://github.com/xu756/tab-harbor
-   ```
-
-2. Ask it to install the extension.
-3. Open a new tab in Chrome.
-
-### Install manually
-
-1. Clone this repo:
-
-   ```bash
-   git clone https://github.com/xu756/tab-harbor.git
-   ```
-
-2. Open `chrome://extensions`
-3. Turn on **Developer mode**
-4. Click **Load unpacked**
-5. Select the [`extension/`](extension/) folder in Chrome, or the repo root in Edge
-6. Open a new tab
-
-## 🔒 Fully Local
-
-Tab Harbor runs entirely inside the extension. Open tabs come directly from Chrome, and saved sessions, todos, quick links, theme preferences, and layout state stay on your machine through `chrome.storage.local`.
-
-If you publish this repo for other people, they get the code and assets, not your personal browsing data.
-
-## 🛠️ Under the Hood
-
-This is a Manifest V3 Chrome extension with a plain frontend stack and no build step required to use it. You can clone it, load it, and start using it without npm, without a dev server, and without standing up anything else.
-
-## 🙏 Acknowledgements
-
-- Tab Harbor is built on top of Zara's open-source project [tab-out](https://github.com/zarazhangrui/tab-out), which is the upstream repository and the starting point for this project.
-- Thanks as well to the [Linux.do community](https://linux.do) for the ideas, feedback, and the kind of maker energy that helps projects like this keep evolving.
-
-## 📄 License
-
-MIT License
+Incognito tabs are excluded from Harbor's persisted workspace model.

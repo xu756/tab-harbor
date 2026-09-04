@@ -1,57 +1,68 @@
 # Tab Harbor Agent Guide
 
-This file captures project-level design and implementation constraints for agents working in this repository.
+Tab Harbor is a calm, local-first browser workspace. The product is a Chrome new-tab workspace first, with the side panel as a secondary surface.
 
-## Design Direction
+## Product direction
 
-1. Tab Harbor is a quiet browser workspace, not a SaaS dashboard, wallpaper page, or gamified productivity product.
-2. Preserve the calm / literary / composed identity. Interfaces should feel like a reading desk or paper workspace.
-3. Prefer scanability over spectacle. If a change makes the page louder before it makes it clearer, reject it.
-4. Keep secondary controls quiet. Theme controls, drawer triggers, archive actions, and helper affordances must not visually outrank tab content.
-5. Avoid decorative chrome that does not improve hierarchy, orientation, or atmosphere.
+1. Treat live browser tabs as runtime state and workspaces as durable user state.
+2. Local mode must remain useful without an account or backend.
+3. Multi-device sync, authentication, inbox, and remote sessions are separate layers and must not leak into the local data model.
+4. Preserve the quiet reading-desk visual identity: warm neutral surfaces, compact rows, low visual noise, strong scanability.
+5. Do not turn the interface into a SaaS dashboard or a card wall.
 
-## UI Guardrails
+## Frontend architecture
 
-1. Do not rely on hover alone for critical controls or discoverability.
-2. Keyboard focus must stay visible and usable.
-3. Reduced-motion users must still understand every state change without animation.
-4. Compact controls still need comfortable hit targets.
-5. Theme changes must update the full environment, not just local controls.
+The current project is a client-only Vite SPA built for Manifest V3. It does not use SSR or hydration.
 
-## Interaction Lessons
+- Vite: application shell and extension build pipeline.
+- TanStack Router: type-safe URL/search state.
+- TanStack Query: Chrome API and local persistence queries/mutations.
+- TanStack Store: transient UI state.
+- TanStack Virtual: large live-tab lists.
+- TanStack Form: workspace forms.
+- shadcn with Base UI: accessible application components.
+- Tailwind CSS 4: semantic tokens, layout, and responsive styling.
+- React 19 + TypeScript + Vite.
 
-1. Floating editors triggered from compact controls should anchor near the triggering element when practical; default corner placement is only a fallback.
-2. For dense icon reordering, prefer explicit grid tracks over `flex-wrap` when cross-row drag behavior matters.
-3. For icon drag-and-drop previews, use `ghost + slot` instead of converting the original node to `position: fixed`; keep the dragged visual under the pointer and the layout slot in the flow.
-4. Drag preview hit-testing should be based on stable slot positions captured at drag start, not on the currently reflowing DOM alone.
-5. FLIP animations in reorderable icon strips should only run for nodes whose order actually changed; avoid re-animating unaffected siblings.
+Source lives in `src/`; extension static assets live in `public/`. `bun run build` produces the unpacked extension in `dist/`.
 
-## Frontend Architecture
+Extension pages use hash history so the physical `index.html` path is not interpreted as an application route.
 
-1. This project is plain HTML, CSS, and ordered `<script>` tags with no bundler or ESM module system.
-2. Script load order is part of the runtime contract. Treat changes to `index.html` script order as high impact.
-3. Top-level bindings can collide across files. When destructuring from `globalThis`, use file-scoped prefixed aliases instead of shared short names.
-4. Keep `extension/app.js` as a thin orchestrator entry. Do not let it grow back into a catch-all runtime file.
-5. Prefer responsibility-based module boundaries such as:
-   - `ui-helpers.js`
-   - `theme-controls.js`
-   - `drawer-manager.js`
-   - `dashboard-runtime.js`
+Current application routes are `/`, `/tabs`, `/bookmarks`, and `/workspaces`.
 
-## Refactor Safety
+## Chrome constraints
 
-1. After any script split, actively check for startup-time failures such as `Identifier has already been declared`.
-2. A passing `node --test extension/*.test.js` run is necessary but not sufficient for startup refactors.
-3. If the page shows static scaffolding but not dynamic tab data, first suspect runtime initialization failure before changing data logic.
-4. For startup regressions, inspect real browser console/runtime errors before continuing to refactor.
+1. Manifest V3 extension pages must remain CSP-safe: no remote scripts and no runtime code fetched from a CDN.
+2. `tabId`, `windowId`, and Chrome `groupId` are runtime identifiers only. Never persist them as cloud entity IDs.
+3. Incognito data must never be persisted or synced by default.
+4. Request the minimum permissions needed for implemented features.
+5. Chrome APIs must always have a browser-preview fallback so `bun run dev` remains useful outside extension runtime.
+6. Chrome bookmarks are owned by `chrome.bookmarks`; do not duplicate the bookmark tree in Harbor storage.
+
+## UI guardrails
+
+1. Live tab rows should stay compact (roughly 40px).
+2. Critical actions cannot depend on hover alone; keyboard focus must be visible.
+3. Use one strong action per area and keep secondary controls quiet.
+4. Prefer text hierarchy, whitespace, separators, and favicon identity over decorative cards.
+5. Keep the main new-tab layout useful at 1280, 1440, 1920, 2K, and 4K widths; side-panel widths must degrade to a single-column layout.
+
+## Documentation
+
+1. Describe the current product and architecture in present tense.
+2. Keep `README.md` and `README.zh-CN.md` aligned when product behavior changes.
+3. Document Chrome permissions and local data handling when a feature starts reading or writing new browser data.
+4. Keep detailed architecture and feature behavior in `docs/`; link those references from the README.
 
 ## Validation
 
-1. Run `node --test extension/*.test.js` after code changes that affect UI structure, script loading, or runtime behavior.
-2. For script-loading or initialization changes, also verify the extension in a real browser session.
+Before merging a UI change:
 
-## Reference
+```bash
+bun install
+bun run test
+bun run typecheck
+bun run build
+```
 
-Detailed rationale and lessons learned live in:
-- `docs/design-principles-and-lessons.md`
-- `.impeccable.md`
+Then load `dist/` as an unpacked Chrome extension and verify the new-tab override and side panel.

@@ -1,126 +1,108 @@
-# Tab Harbor
+# Harbor
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](./README.md)
 
-**一个更安静的新标签页工作台，把标签页、快捷链接、暂存纸条、已保存会话和轻量待办收进同一个顺手的空间里。**
+Harbor 是一个安静、Local First 的 Chrome 浏览器工作空间，把当前标签、Chrome 书签、快捷入口、待办和已保存工作区集中到新标签页中，也可以在侧边栏使用。
 
-Tab Harbor 会把 Chrome 的新标签页变成一个可以继续工作的地方。你会先看到自己现在到底开了什么、哪些内容适合稍后保存成会话、还有哪些事情还没处理完。
+扩展无需账号或后端即可工作。浏览器数据由 Chrome 管理，Harbor 的持久数据保存在本机。
 
-<p align="center">
-  <img src="assets/readme/feature-tabs.png" alt="Tab Harbor 总览" width="760">
-</p>
+## 功能
 
+- **首页**：网页搜索、当前标签、可编辑快捷入口、待办和最近工作区。
+- **标签**：搜索普通 Chrome 标签和原生标签组，多选、关闭、查找重复标签，并把选中的标签保存为工作区。
+- **书签**：以双栏资源管理器查看真实 Chrome 书签树；按名称、网址或文件夹搜索；编辑书签；拖拽排序或跨文件夹移动；通过“移动到”操作完成键盘可达的移动；导入、导出书签 HTML。
+- **工作区**：把一组标签持久化到本机，并支持恢复、重命名和删除。
+- **命令菜单**：按 `Ctrl+K` 或 `⌘K` 搜索标签、书签、工作区和常用操作。
+- **侧边栏**：在窄宽度下使用同一套应用。
 
-## ✨ 核心亮点
+第一次进入书签页时，文件夹树默认全部展开；之后会记住选中的文件夹和展开状态。右侧书签列表在普通浏览时只显示名称，网址仅在编辑状态显示。
 
-- **标签页按域名自动整理。** Tab Harbor 会按域名整理打开中的页面，把首页型标签单独收到 `Homepages` 分组里，让你先看清自己到底在处理什么。
-- **自动分组之外，你也还能按自己的工作流继续整理。** 当域名分组不够用时，你可以创建手动分组、保留常用的 quick links，并通过顶部图标很快跳回需要的区域。
-- **已保存的标签页现在更像会话。** 你可以选择要保存哪些内容、把标签页加进已有会话、之后再恢复回来，也可以把会话折叠起来，让概览更干净。
-- **待办一直在身边，但不会太吵。** 抽屉里可以新建、编辑、删除、搜索和归档待办，不用离开页面。
-- **它尽量让工作台更安静，但不让系统更重。** 你可以切换主题、调透明度、调整文字和快捷链接大小、换背景图、让不活跃标签进入睡眠，也可以一键清理重复标签页；同时所有数据都还是保存在 `chrome.storage.local`，不需要服务器也不需要账号。
+## 路由
 
-## 🖼️ 功能展示
+所有扩展页面都加载同一个 `index.html`，因此应用使用 hash history。
 
-<table>
-  <tr>
-    <td width="33.33%" valign="top">
-      <strong>标签页统一管理</strong><br><br>
-      <img src="assets/readme/feature-tabs.png" alt="标签页" width="100%">
-    </td>
-    <td width="33.33%" valign="top">
-      <strong>已保存会话</strong><br><br>
-      <img src="assets/readme/feature-saved-drawer.png" alt="已保存会话抽屉" width="100%">
-    </td>
-    <td width="33.33%" valign="top">
-      <strong>待办和跳转</strong><br><br>
-      <img src="assets/readme/feature-todos.png" alt="待办" width="100%">
-    </td>
-  </tr>
-</table>
+| 路由 | 页面 |
+| --- | --- |
+| `#/` | 首页 |
+| `#/tabs` | 标签 |
+| `#/bookmarks` | 书签 |
+| `#/workspaces` | 工作区 |
 
-### 标签页统一管理
+## 技术栈
 
-Tab Harbor 会把标签页整理成更像工作区的结构：**按域名分组、支持手动分组、保留快捷入口，并且能从顶部图标快速跳回对应区域**；想把浏览器收拾利落一点时，**也可以一键清理重复标签页**。
+- React 19 + TypeScript
+- Vite + Manifest V3
+- TanStack Router、Query、Store、Virtual、Form
+- 基于 Base UI 的 shadcn 组件
+- Tailwind CSS 4 + Lucide Icons
+- Bun
 
-### 已保存会话
+当前应用是纯客户端 SPA，不使用 SSR 或 hydration。扩展页面不会从 CDN 加载运行时代码。
 
-那些“现在先不看，但之后一定要回来”的页面，可以**先保存成会话、加入已有会话、之后再恢复，或者折叠起来保留一个更安静的概览**。
+## 本地开发
 
-### 待办和跳转
+需要安装当前版本的 Bun，并准备一个 Chromium 内核浏览器。
 
-除了整理标签页，你还可以在这里顺手记下待办、补一点简短说明、归档完成项，并从顶部图标快速回到当前任务相关的分组。
+```bash
+bun install
+bun run dev
+```
 
-### 切换主题
+开发服务器默认位于 `http://localhost:5173`。普通浏览器无法访问 Chrome 扩展 API，页面会提供具有代表性的演示标签和书签；书签改动只在内存中保留到页面刷新。工作区、快捷入口和待办使用开发地址自己的 `localStorage`。
 
-想让它更像你自己的工作台时，可以**切换主题、调透明度、调整文字和快捷链接大小、换背景图**。
+## 构建和安装
 
-<table>
-  <tr>
-    <td><img src="assets/readme/theme-warm-neutral.png" alt="warm neutral" width="100%"></td>
-    <td><img src="assets/readme/theme-soft-green.png" alt="soft green" width="100%"></td>
-  </tr>
-  <tr>
-    <td><img src="assets/readme/theme-soft-clay.png" alt="soft clay" width="100%"></td>
-    <td><img src="assets/readme/theme-custom-background.png" alt="custom background" width="100%"></td>
-  </tr>
-</table>
+```bash
+bun run test
+bun run typecheck
+bun run build
+```
 
-### 手动睡眠控制
+构建结果位于 `dist/`。
 
-当你想让某个标签页先“睡一会儿”，又不想真的丢掉它时，可以**直接把单个标签页或整个分组放进睡眠状态**。
+1. 打开 `chrome://extensions`。
+2. 开启“开发者模式”。
+3. 点击“加载已解压的扩展程序”。
+4. 选择当前仓库的 `dist/` 目录。
+5. 打开新标签页，并通过扩展图标检查侧边栏。
 
-## 🌊 为什么它用起来不一样
+再次构建后，先在 `chrome://extensions` 中点击 Harbor 的“重新加载”，再验证更新后的文件。
 
-很多新标签页产品想做的是搜索框、壁纸页，或者更漂亮一点的快捷方式面板。Tab Harbor 更像一个很轻的浏览器控制台。它不会假装你没有开很多标签页，而是承认这种混乱就是现实，然后把它整理成更能工作的样子。
+## 常用命令
 
-这也是它为什么尽量保持轻。没有后端，没有同步账号，也不需要你再开一个单独应用。所有混乱本来就发生在浏览器里，那它就直接在那里帮你收拾。
+| 命令 | 用途 |
+| --- | --- |
+| `bun run dev` | 启动浏览器开发预览 |
+| `bun run test` | 运行测试 |
+| `bun run typecheck` | 检查 TypeScript 类型 |
+| `bun run build` | 构建扩展并检查类型 |
+| `bun run preview` | 预览生产构建 |
 
-## ⚡ 快速使用
+## 目录结构
 
-### 从 Google 应用商店安装
+```text
+src/
+  components/       shadcn 通用组件和书签资源管理器
+  features/         应用外壳和路由级功能
+  lib/              Chrome 适配器、本地持久化和领域逻辑
+  routes/           TanStack Router 路由模块
+  state/            瞬时 UI 状态
+  styles/           全局主题和布局 token
+public/              Manifest、Service Worker 和扩展图标
+docs/                架构、书签和设计规范
+```
 
-Chrome 应用商店页面审核通过后，会把链接补在这里。
+详细说明见[架构说明](./docs/architecture.md)、[Chrome 书签](./docs/bookmarks.md)、[设计原则](./docs/design-principles.md)和[隐私说明](./PRIVACY.md)。
 
-从商店安装后，在 Chrome 里打开一个新标签页即可。
+## Chrome 权限
 
-### 用 coding agent 安装
+| 权限 | 用途 |
+| --- | --- |
+| `tabs` | 读取、激活、关闭和恢复普通标签 |
+| `tabGroups` | 读取 Chrome 原生标签组信息 |
+| `bookmarks` | 读取书签，并执行用户发起的编辑、移动、导入和导出 |
+| `storage` | 在本机保存工作区、快捷入口和待办 |
+| `sidePanel` | 提供侧边栏入口 |
+| `favicon` | 显示网站标识，无需另行请求远程图片 |
 
-1. 把这个仓库地址给你的 coding agent：
-
-   ```text
-   https://github.com/xu756/tab-harbor
-   ```
-2. 让它帮你安装扩展
-3. 在 Chrome 里打开一个新标签页
-
-### 手动安装
-
-1. 克隆仓库：
-
-   ```bash
-   git clone https://github.com/xu756/tab-harbor.git
-   ```
-2. 打开 `chrome://extensions`
-3. 开启 **Developer mode**
-4. 点击 **Load unpacked**
-5. 在 Chrome 里选择 [`extension/`](extension/) 文件夹，Edge 里可直接选仓库根目录
-6. 打开一个新标签页
-
-## 🔒 完全本地
-
-Tab Harbor 完全运行在扩展内部。打开中的标签页直接来自 Chrome，已保存会话、Todos、Quick links、主题偏好和布局状态都留在你自己的机器上，通过 `chrome.storage.local` 保存。
-
-如果你把这个仓库发到 GitHub 给别人用，他们拿到的是代码和资源文件，不会带上你的个人浏览数据。
-
-## 🛠️ 底层
-
-这是一个 Manifest V3 的 Chrome 扩展，前端结构很轻，使用时也不需要 build step。你可以直接 clone、直接加载、直接开始用，不需要 npm，不需要 dev server，也不需要先把别的东西跑起来。
-
-## 🙏 致谢
-
-- Tab Harbor 基于 Zara 的开源项目 [tab-out](https://github.com/zarazhangrui/tab-out) 继续发展，它也是本项目的上游仓库和最初出发点。
-- 感谢 [Linux.do 社区](https://linux.do) 提供的灵感、反馈和很有生命力的开源氛围，让这个项目能持续往前长。
-
-## 📄 License
-
-MIT License
+隐身窗口中的标签不会进入 Harbor 的持久工作区数据。

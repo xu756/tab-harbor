@@ -1,160 +1,44 @@
-# Privacy Policy for Tab Harbor
+# Harbor Privacy
 
-Last updated: 2026-05-27
+Harbor is a local-first Chrome extension. It does not use a Harbor backend, require an account, serve advertising, or include analytics or telemetry.
 
-Tab Harbor is a Chrome extension that turns the browser new tab page into a calmer workspace for open tabs, quick links, saved reads, and lightweight todos.
+## Browser data
 
-This Privacy Policy explains what data Tab Harbor accesses, how that data is used, and how it is stored.
+Harbor uses the permissions declared in `public/manifest.json` to provide the features visible in the extension.
 
-## 1. Summary
+- **Tabs and tab groups:** Harbor reads page titles, URLs, favicons, window and tab positions, pinned state, and native tab-group metadata. It uses this data to display, activate, close, and save regular tabs. Incognito tabs are excluded from persisted workspaces.
+- **Chrome bookmarks:** Harbor reads the Chrome bookmark tree. When the user edits, reorders, moves, or imports bookmarks, Harbor writes those changes through `chrome.bookmarks`. Chrome remains the source of truth for bookmark data.
+- **Favicons:** Harbor displays site icons using Chrome's extension favicon capability.
+- **Side panel:** Harbor exposes its application as a Chrome side panel.
 
-Tab Harbor is designed to work locally in the browser.
+Harbor does not read page body content, cookies, passwords, form values, screenshots, downloads, or the Chrome browsing-history database.
 
-It does not require a user account.
-It does not sell user data.
-It does not use remote code.
-It does not send workspace data to a backend controlled by the developer.
+## Local storage
 
-Most extension data is stored locally through Chrome extension storage APIs.
+Harbor stores the following data in `chrome.storage.local`:
 
-## 2. Information the extension accesses
+- saved workspaces and the URL/display metadata needed to restore them;
+- user-created quick links;
+- todos.
 
-To provide its core features, Tab Harbor may access the following categories of data:
+Theme selection and bookmark explorer preferences, such as the selected folder and expanded folders, are stored locally in the extension page's `localStorage`.
 
-- Open tab metadata, including tab titles, URLs, and tab state
-- Quick links created by the user
-- Saved read-later items created by the user
-- Todo items created by the user
-- Theme, transparency, layout, and ordering preferences selected by the user
-- Clipboard image or SVG content, but only when the user explicitly pastes a custom shortcut icon
+The browser development preview uses local demo data because extension APIs are unavailable there. Preview bookmark changes are kept in memory until the page is reloaded. Preview workspaces, quick links, and todos use the development origin's `localStorage`; they are separate from data stored by the installed extension.
 
-Tab Harbor does not intentionally collect sensitive categories such as health data, financial account credentials, or personal communications.
+## Bookmark files
 
-## 3. How the data is used
+Bookmark import reads only the HTML file selected by the user. The file is parsed locally, and imported items are created in Chrome bookmarks under a dated import folder. If an import fails, Harbor attempts to remove the incomplete import folder.
 
-Tab Harbor uses the accessed data only to provide the extension’s single purpose:
+Bookmark export creates an HTML file locally from the current Chrome bookmark tree and downloads it through the browser. Harbor does not upload imported or exported bookmark files.
 
-- Show and organize the user’s current browser session in the new tab page
-- Help the user review, group, focus, close, deduplicate, save, and restore tabs
-- Let the user manage quick links, saved reads, and lightweight todos in one workspace
-- Restore user preferences and layout state when the new tab page is opened again
-- Let the user paste a custom icon into a shortcut when they explicitly choose to do so
+## Opening websites
 
-Tab Harbor does not use this data for advertising, profiling, creditworthiness, or unrelated analytics.
+Opening a tab, bookmark, quick link, or restored workspace navigates Chrome to that URL. The destination website receives the normal browser request; the navigation is not proxied through a Harbor service.
 
-## 4. Chrome permissions and why they are needed
+## Removing data
 
-Tab Harbor requests the following Chrome permissions:
+Users can remove saved workspaces, quick links, and todos from Harbor. Clearing the extension's site data or uninstalling the extension removes Harbor's local settings and stored application data. Changes already made to Chrome bookmarks remain part of the user's Chrome bookmark store and can be managed in Chrome's bookmark manager.
 
-### `tabs`
+## Source
 
-Used to read and manage the user’s open tabs so the extension can:
-
-- display open tabs in the workspace
-- group tabs by site or workflow
-- focus a selected tab
-- close or deduplicate tabs at the user’s request
-- save or restore tabs as part of the read-later workflow
-
-### `storage`
-
-Used to store user-created and user-selected local state, including:
-
-- quick links
-- saved reads
-- todo items
-- theme settings
-- group order and layout order
-- other local workspace preferences
-
-### `search`
-
-Used when the user types into the built-in search field and explicitly submits a search.  
-This permission allows Tab Harbor to send the query through the browser’s default search engine in the current tab.
-
-### `clipboardRead`
-
-Used only when the user explicitly pastes an image or SVG into the shortcut editor to create a custom shortcut icon.  
-Tab Harbor does not continuously monitor or silently read clipboard contents in the background.
-
-### `tabGroups`
-
-Used when the user enables Chrome tab group sync features so the extension can:
-
-- read existing native Chrome tab groups
-- create or update Chrome tab groups to match the workspace
-- keep group titles, colors, and collapsed state aligned with the user’s chosen organization
-- respond when Chrome tab groups change outside the Tab Harbor page
-
-### `favicon`
-
-Used to let Tab Harbor request and display site icons for tabs, saved sessions, and quick shortcuts more reliably.  
-This may include Chrome’s packaged favicon endpoint, a site’s own `favicon.ico`, or a fallback favicon service when no better icon is available.
-
-## 5. Data storage and retention
-
-Tab Harbor stores extension data locally using Chrome extension storage APIs, primarily `chrome.storage.local`.
-
-This includes items such as:
-
-- quick links
-- saved reads
-- todos
-- theme preferences
-- layout and ordering preferences
-
-This data remains in the browser profile until the user removes it through the extension UI, clears extension storage, or uninstalls the extension.
-
-## 6. Data sharing
-
-Tab Harbor does not sell user data.
-
-Tab Harbor does not transfer user data to third parties except where necessary to perform a user-requested browser action, such as:
-
-- opening a page URL chosen by the user
-- sending a search query through the browser’s default search engine after the user explicitly submits it
-- requesting favicon resources needed to display site icons in the workspace
-
-Aside from those normal browser actions initiated by the user, Tab Harbor does not send workspace data to a developer-controlled remote service.
-
-## 7. Remote code
-
-Tab Harbor does not use remote code.
-
-All JavaScript and extension assets required to run the extension are packaged with the extension bundle. Tab Harbor does not download and execute external JavaScript or WebAssembly at runtime.
-
-## 8. Third-party services
-
-Tab Harbor relies on Chrome’s extension platform APIs to function.
-
-When a user opens a webpage or submits a search through the extension, the browser may connect to the destination website or the configured default search engine as part of the user’s explicit action.
-
-To render site icons, Tab Harbor may also request favicon resources from a page’s origin or a fallback favicon service based on the page URLs already visible in the workspace.
-
-## 9. User choices and controls
-
-Users can control their data by:
-
-- editing or deleting quick links
-- deleting saved reads or todos
-- changing theme and layout preferences
-- uninstalling the extension
-- clearing extension storage through browser settings
-
-If you do not want Tab Harbor to access your open tabs, do not use the extension.
-
-## 10. Children’s privacy
-
-Tab Harbor is not directed to children under 13, and the developer does not knowingly collect personal information from children.
-
-## 11. Changes to this policy
-
-This Privacy Policy may be updated from time to time to reflect product changes, permission changes, or legal requirements.
-
-The latest version will be published at the public URL associated with the extension listing.
-
-## 12. Contact
-
-If you have questions about this Privacy Policy or Tab Harbor, you may contact:
-
-- Publisher contact email: `lunatic.halle@gmail.com`
+Harbor is open source at <https://github.com/xu756/tab-harbor>.
