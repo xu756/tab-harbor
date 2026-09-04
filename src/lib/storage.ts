@@ -1,11 +1,43 @@
 import { defaultQuickLinks } from './demo-data'
-import type { BrowserTab, QuickLink, SavedTab, TodoItem, Workspace } from './types'
+import type {
+  BrowserTab,
+  MockUserSession,
+  QuickLink,
+  SavedTab,
+  TodoItem,
+  UserPreferences,
+  Workspace,
+} from './types'
 import { hasChromeRuntime } from './chrome'
 
 const WORKSPACES_KEY = 'harbor.workspaces.v3'
 const LEGACY_WORKSPACES_KEY = 'tabHarbor.workspaces.v2'
 const QUICK_LINKS_KEY = 'harbor.quickLinks.v1'
 const TODOS_KEY = 'harbor.todos.v1'
+const PREFERENCES_KEY = 'harbor.preferences.v1'
+const AUTH_SESSION_KEY = 'harbor.auth_session.v1'
+
+const DEFAULT_PREFERENCES: UserPreferences = {
+  defaultSearchEngine: 'baidu',
+  clockFormat: '24h',
+  showClockSeconds: true,
+  focusMode: false,
+}
+
+const DEFAULT_SESSION: MockUserSession = {
+  isLoggedIn: false,
+  autoSyncEnabled: false,
+}
+
+
+const memoryStore = new Map<string, string>()
+
+export function clearStorageForTest() {
+  memoryStore.clear()
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.clear()
+  }
+}
 
 async function readValue<T>(key: string): Promise<T | undefined> {
   if (hasChromeRuntime()) {
@@ -13,7 +45,10 @@ async function readValue<T>(key: string): Promise<T | undefined> {
     return value[key] as T | undefined
   }
 
-  const raw = window.localStorage.getItem(key)
+  const raw =
+    typeof window !== 'undefined' && window.localStorage
+      ? window.localStorage.getItem(key)
+      : memoryStore.get(key)
   if (!raw) return undefined
   try {
     return JSON.parse(raw) as T
@@ -27,8 +62,14 @@ async function writeValue<T>(key: string, value: T) {
     await chrome.storage.local.set({ [key]: value })
     return
   }
-  window.localStorage.setItem(key, JSON.stringify(value))
+  const serialized = JSON.stringify(value)
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(key, serialized)
+    return
+  }
+  memoryStore.set(key, serialized)
 }
+
 
 export async function listWorkspaces(): Promise<Workspace[]> {
   let rows = await readValue<Workspace[]>(WORKSPACES_KEY)
@@ -143,3 +184,52 @@ export async function clearCompletedTodos() {
   const current = await listTodos()
   await writeValue(TODOS_KEY, current.filter((item) => !item.completed))
 }
+
+export async function getPreferences(): Promise<UserPreferences> {
+  const val = await readValue<UserPreferences>(PREFERENCES_KEY)
+  return { ...DEFAULT_PREFERENCES, ...(val ?? {}) }
+}
+
+export async function updatePreferences(patch: Partial<UserPreferences>): Promise<UserPreferences> {
+  const current = await getPreferences()
+  const next = { ...current, ...patch }
+  await writeValue(PREFERENCES_KEY, next)
+  return next
+}
+
+export async function getSession(): Promise<MockUserSession> {
+  const val = await readValue<MockUserSession>(AUTH_SESSION_KEY)
+  return { ...DEFAULT_SESSION, ...(val ?? {}) }
+}
+
+export async function mockLogin(email: string, name?: string): Promise<MockUserSession> {
+  const session: MockUserSession = {
+    isLoggedIn: true,
+    user: {
+      id: crypto.randomUUID(),
+      email: email.trim(),
+      name: name?.trim() || email.split('@')[0],
+      plan: 'free',
+      joinedAt: new Date().toISOString(),
+    },
+    autoSyncEnabled: true,
+    lastSyncedAt: new Date().toISOString(),
+  }
+  await writeValue(AUTH_SESSION_KEY, session)
+  return session
+}
+
+export async function mockLogout(): Promise<MockUserSession> {
+  await writeValue(AUTH_SESSION_KEY, DEFAULT_SESSION)
+  return DEFAULT_SESSION
+}
+
+export async function mockTriggerSync(): Promise<{ success: boolean; syncedAt: string }> {
+  const current = await getSession()
+  const syncedAt = new Date().toISOString()
+  if (current.isLoggedIn) {
+    await writeValue(AUTH_SESSION_KEY, { ...current, lastSyncedAt: syncedAt })
+  }
+  return { success: true, syncedAt }
+}
+

@@ -84,3 +84,36 @@ export interface TabGroupBucket {
   tabs: BrowserTab[]
   color?: string
 }
+
+export type ClockFormat = '24h' | '12h'
+
+export interface UserPreferences {
+  defaultSearchEngine: string
+  clockFormat: ClockFormat
+  showClockSeconds: boolean
+  focusMode: boolean
+}
+
+export interface MockUserSession {
+  isLoggedIn: boolean
+  user?: {
+    id: string
+    email: string
+    name: string
+    avatarUrl?: string
+    plan: 'free' | 'pro'
+    joinedAt: string
+  }
+  lastSyncedAt?: string
+  autoSyncEnabled: boolean
+}
+
+export interface HarborBackupData {
+  version: 1
+  exportedAt: string
+  workspaces: Workspace[]
+  quickLinks: QuickLink[]
+  todos: TodoItem[]
+  preferences: UserPreferences
+}
+
