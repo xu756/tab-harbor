@@ -34,11 +34,10 @@ function groupTabs(tabs: BrowserTab[]): TabGroupBucket[] {
   return [...buckets.values()]
 }
 
-export function LiveTabs({ tabs, loading, onSave, compact = false }: {
+export function LiveTabs({ tabs, loading, onSave }: {
   tabs: BrowserTab[]
   loading: boolean
   onSave: (tabs: BrowserTab[]) => void
-  compact?: boolean
 }) {
   const queryClient = useQueryClient()
   const search = useUiStore((state) => state.tabSearch)
@@ -100,7 +99,7 @@ export function LiveTabs({ tabs, loading, onSave, compact = false }: {
           <div className="mt-2 flex justify-between px-0.5 text-xs text-muted-foreground"><span>{groups.length} 个分组</span><span>{selectedIds.length ? `已选 ${selectedIds.length}` : '勾选标签可批量处理'}</span></div>
         </div>
 
-        <div ref={scrollRef} className={cn('overflow-auto', compact ? 'h-[min(54vh,540px)]' : 'h-[calc(100vh-295px)]')}>
+        <div ref={scrollRef} className={cn('overflow-auto')}>
           {loading ? <LoadingRows /> : null}
           {!loading && !rows.length ? (
             <Empty className="h-full border-0">
