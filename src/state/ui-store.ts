@@ -7,6 +7,7 @@ interface UiState {
   tabSearch: string
   selectedTabIds: number[]
   commandOpen: boolean
+  settingsOpen: boolean
   theme: ThemeMode
 }
 
@@ -20,8 +21,10 @@ export const uiStore = new Store<UiState>({
   tabSearch: '',
   selectedTabIds: [],
   commandOpen: false,
+  settingsOpen: false,
   theme: initialTheme(),
 })
+
 
 export function useUiStore<T>(selector: (state: UiState) => T) {
   return useStore(uiStore, selector)
@@ -47,6 +50,11 @@ export function toggleTabSelection(tabId: number) {
 export function setCommandOpen(commandOpen: boolean) {
   uiStore.setState((state) => ({ ...state, commandOpen }))
 }
+
+export function setSettingsOpen(settingsOpen: boolean) {
+  uiStore.setState((state) => ({ ...state, settingsOpen }))
+}
+
 
 export function cycleTheme() {
   uiStore.setState((state) => {

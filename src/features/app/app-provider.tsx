@@ -6,10 +6,12 @@ import {
   FolderOpen,
   Layers3,
   LayoutGrid,
+  Settings,
   SquareStack,
   Trash2,
   X,
 } from 'lucide-react'
+
 import {
   createContext,
   useContext,
@@ -51,22 +53,35 @@ import {
 } from '@/lib/chrome'
 import {
   createWorkspace,
+  exportHarborBackup,
+  getPreferences,
+  getSession,
+  importHarborBackup,
   listQuickLinks,
   listTodos,
   listWorkspaces,
+  mockLogin,
+  mockLogout,
+  mockTriggerSync,
   renameWorkspace,
+  resetAllData,
   saveQuickLink,
+  updatePreferences,
 } from '@/lib/storage'
 import type {
   BrowserBookmarkCatalog,
   BrowserTab,
+  HarborBackupData,
+  MockUserSession,
   QuickLink,
   TodoItem,
+  UserPreferences,
   Workspace,
 } from '@/lib/types'
 import {
   setCommandOpen,
   setSelectedTabIds,
+  setSettingsOpen,
   useUiStore,
 } from '@/state/ui-store'
 
@@ -75,6 +90,8 @@ export const bookmarksQueryKey = ['bookmarks'] as const
 export const workspacesQueryKey = ['workspaces'] as const
 export const quickLinksQueryKey = ['quick-links'] as const
 export const todosQueryKey = ['todos'] as const
+export const preferencesQueryKey = ['preferences'] as const
+export const sessionQueryKey = ['auth-session'] as const
 
 interface QuickLinkDraft {
   id?: string
@@ -89,12 +106,25 @@ interface AppContextValue {
   workspaces: Workspace[]
   quickLinks: QuickLink[]
   todos: TodoItem[]
+  preferences: UserPreferences
+  session: MockUserSession
   loadingTabs: boolean
   loadingBookmarks: boolean
   openSaveWorkspace: (tabs: BrowserTab[]) => void
   openQuickLinkEditor: (link?: QuickLink) => void
   openRenameWorkspace: (workspace: Workspace) => void
+  updatePreferences: (patch: Partial<UserPreferences>) => Promise<UserPreferences>
+  login: (email: string, name?: string) => Promise<MockUserSession>
+  logout: () => Promise<MockUserSession>
+  triggerSync: () => Promise<{ success: boolean; syncedAt: string }>
+  exportBackup: () => Promise<HarborBackupData>
+  importBackup: (
+    data: HarborBackupData,
+    mode: 'merge' | 'replace',
+  ) => Promise<{ success: boolean; workspacesCount: number; quickLinksCount: number; todosCount: number }>
+  resetData: () => Promise<void>
 }
+
 
 const AppContext = createContext<AppContextValue | null>(null)
 
@@ -108,6 +138,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const selectedTabIds = useUiStore((state) => state.selectedTabIds)
   const commandOpen = useUiStore((state) => state.commandOpen)
+  const settingsOpen = useUiStore((state) => state.settingsOpen)
   const theme = useUiStore((state) => state.theme)
   const [saveCandidate, setSaveCandidate] = useState<BrowserTab[] | null>(null)
   const [quickLinkDraft, setQuickLinkDraft] = useState<QuickLinkDraft | null>(null)
@@ -118,6 +149,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const workspacesQuery = useQuery({ queryKey: workspacesQueryKey, queryFn: listWorkspaces })
   const quickLinksQuery = useQuery({ queryKey: quickLinksQueryKey, queryFn: listQuickLinks })
   const todosQuery = useQuery({ queryKey: todosQueryKey, queryFn: listTodos })
+  const preferencesQuery = useQuery({ queryKey: preferencesQueryKey, queryFn: getPreferences })
+  const sessionQuery = useQuery({ queryKey: sessionQueryKey, queryFn: getSession })
+
+  const updatePreferencesMutation = useMutation({
+    mutationFn: updatePreferences,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: preferencesQueryKey })
+    },
+  })
+
+  const loginMutation = useMutation({
+    mutationFn: ({ email, name }: { email: string; name?: string }) => mockLogin(email, name),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: sessionQueryKey })
+    },
+  })
+
+  const logoutMutation = useMutation({
+    mutationFn: mockLogout,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: sessionQueryKey })
+    },
+  })
+
+  const triggerSyncMutation = useMutation({
+    mutationFn: mockTriggerSync,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: sessionQueryKey })
+    },
+  })
+
+  const importBackupMutation = useMutation({
+    mutationFn: ({ data, mode }: { data: HarborBackupData; mode: 'merge' | 'replace' }) =>
+      importHarborBackup(data, mode),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries()
+    },
+  })
+
+  const resetDataMutation = useMutation({
+    mutationFn: resetAllData,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries()
+    },
+  })
 
   useEffect(
     () => subscribeToTabChanges(() => void queryClient.invalidateQueries({ queryKey: tabsQueryKey })),
@@ -146,17 +222,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
         event.preventDefault()
         setCommandOpen(!commandOpen)
       }
-      if (event.key === 'Escape' && commandOpen) setCommandOpen(false)
+      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+        event.preventDefault()
+        setSettingsOpen(!settingsOpen)
+      }
+      if (event.key === 'Escape') {
+        if (commandOpen) setCommandOpen(false)
+        if (settingsOpen) setSettingsOpen(false)
+      }
     }
     window.addEventListener('keydown', listener)
     return () => window.removeEventListener('keydown', listener)
-  }, [commandOpen])
+  }, [commandOpen, settingsOpen])
 
   const tabs = tabsQuery.data ?? []
   const bookmarkCatalog = bookmarksQuery.data ?? { folders: [], bookmarks: [] }
   const workspaces = workspacesQuery.data ?? []
   const quickLinks = quickLinksQuery.data ?? []
   const todos = todosQuery.data ?? []
+  const preferences = preferencesQuery.data ?? {
+    defaultSearchEngine: 'baidu',
+    clockFormat: '24h',
+    showClockSeconds: true,
+    focusMode: false,
+  }
+  const session = sessionQuery.data ?? {
+    isLoggedIn: false,
+    autoSyncEnabled: false,
+  }
   const selectedTabs = tabs.filter((tab) => selectedTabIds.includes(tab.id))
 
   const value = useMemo<AppContextValue>(() => ({
@@ -165,6 +258,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     workspaces,
     quickLinks,
     todos,
+    preferences,
+    session,
     loadingTabs: tabsQuery.isLoading,
     loadingBookmarks: bookmarksQuery.isLoading,
     openSaveWorkspace: setSaveCandidate,
@@ -174,17 +269,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : { title: '', url: '', label: '' },
     ),
     openRenameWorkspace: setRenameTarget,
+    updatePreferences: (patch) => updatePreferencesMutation.mutateAsync(patch),
+    login: (email, name) => loginMutation.mutateAsync({ email, name }),
+    logout: () => logoutMutation.mutateAsync(),
+    triggerSync: () => triggerSyncMutation.mutateAsync(),
+    exportBackup: exportHarborBackup,
+    importBackup: (data, mode) => importBackupMutation.mutateAsync({ data, mode }),
+    resetData: () => resetDataMutation.mutateAsync(),
   }), [
     bookmarkCatalog,
     bookmarksQuery.isLoading,
+    importBackupMutation,
+    loginMutation,
+    logoutMutation,
+    preferences,
     quickLinks,
+    resetDataMutation,
+    session,
     tabs,
     tabsQuery.isLoading,
     todos,
+    triggerSyncMutation,
+    updatePreferencesMutation,
     workspaces,
   ])
 
   return (
+
     <TooltipProvider>
       <AppContext.Provider value={value}>
         {children}
@@ -395,7 +506,9 @@ function GlobalCommandMenu({ open, onOpenChange, tabs, bookmarks, workspaces, on
         </CommandGroup>
         <CommandGroup heading="操作">
           <CommandItem onSelect={() => closeAndRun(() => onSave(tabs))}><FolderOpen />保存当前标签</CommandItem>
+          <CommandItem onSelect={() => closeAndRun(() => setSettingsOpen(true))}><Settings />偏好设置与账户<CommandShortcut>⌘,</CommandShortcut></CommandItem>
         </CommandGroup>
+
         {tabs.length ? <CommandGroup heading="标签">{tabs.slice(0, 8).map((tab) => <CommandItem key={tab.id} value={`${tab.title} ${tab.url}`} onSelect={() => closeAndRun(() => openUrlInNewTab(tab.url))}><SquareStack />{tab.title}</CommandItem>)}</CommandGroup> : null}
         {bookmarks.length ? <CommandGroup heading="书签">{bookmarks.slice(0, 8).map((bookmark) => <CommandItem key={bookmark.id} value={`${bookmark.title} ${bookmark.url}`} onSelect={() => closeAndRun(() => openUrlInNewTab(bookmark.url))}><Bookmark />{bookmark.title}</CommandItem>)}</CommandGroup> : null}
         {workspaces.length ? <CommandGroup heading="工作区">{workspaces.slice(0, 6).map((workspace) => <CommandItem key={workspace.id} value={workspace.name} onSelect={() => closeAndRun(() => restoreUrls(workspace.tabs.map((tab) => tab.url)))}><Layers3 />{workspace.name}</CommandItem>)}</CommandGroup> : null}
