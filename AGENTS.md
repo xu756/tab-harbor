@@ -20,11 +20,15 @@ The current project is a client-only Vite SPA built for Manifest V3. It does not
 - TanStack Store: transient UI state.
 - TanStack Virtual: large live-tab lists.
 - TanStack Form: workspace forms.
+- shadcn with Base UI: accessible application components.
+- Tailwind CSS 4: semantic tokens, layout, and responsive styling.
 - React 19 + TypeScript + Vite.
 
 Source lives in `src/`; extension static assets live in `public/`. `bun run build` produces the unpacked extension in `dist/`.
 
 Extension pages use hash history so the physical `index.html` path is not interpreted as an application route.
+
+Current application routes are `/`, `/tabs`, `/bookmarks`, and `/workspaces`.
 
 ## Chrome constraints
 
@@ -33,6 +37,7 @@ Extension pages use hash history so the physical `index.html` path is not interp
 3. Incognito data must never be persisted or synced by default.
 4. Request the minimum permissions needed for implemented features.
 5. Chrome APIs must always have a browser-preview fallback so `bun run dev` remains useful outside extension runtime.
+6. Chrome bookmarks are owned by `chrome.bookmarks`; do not duplicate the bookmark tree in Harbor storage.
 
 ## UI guardrails
 
@@ -41,6 +46,13 @@ Extension pages use hash history so the physical `index.html` path is not interp
 3. Use one strong action per area and keep secondary controls quiet.
 4. Prefer text hierarchy, whitespace, separators, and favicon identity over decorative cards.
 5. Keep the main new-tab layout useful at 1280, 1440, 1920, 2K, and 4K widths; side-panel widths must degrade to a single-column layout.
+
+## Documentation
+
+1. Describe the current product and architecture in present tense.
+2. Keep `README.md` and `README.zh-CN.md` aligned when product behavior changes.
+3. Document Chrome permissions and local data handling when a feature starts reading or writing new browser data.
+4. Keep detailed architecture and feature behavior in `docs/`; link those references from the README.
 
 ## Validation
 
